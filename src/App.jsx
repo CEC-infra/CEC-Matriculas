@@ -12,13 +12,16 @@ import AssinaturaPagamento from './pages/AssinaturaPagamento';
 import Configuracoes from './pages/Configuracoes';
 import LinkRematricula from './pages/LinkRematricula';
 import PreMatricula from './pages/PreMatricula';
+import AuthGate from './components/AuthGate';
 
 /* Uma rota por tela. O detalhe da família tem rotas filhas — cada subaba é um
    caminho próprio, então recarregar ou compartilhar a URL cai na mesma aba. */
 export default function App() {
   return (
     <Routes>
-      <Route element={<Layout />}>
+      <Route path="matricula" element={<PreMatricula />} />
+      <Route path="rematricula/:token?" element={<LinkRematricula />} />
+      <Route element={<AuthGate><Layout /></AuthGate>}>
         <Route index element={<Navigate to="/dashboard" replace />} />
         <Route path="dashboard" element={<Dashboard />} />
 
@@ -35,9 +38,6 @@ export default function App() {
         <Route path="automacao" element={<Automacao />} />
         <Route path="assinatura-e-pagamento" element={<AssinaturaPagamento />} />
         <Route path="configuracoes" element={<Configuracoes />} />
-
-        <Route path="rematricula" element={<LinkRematricula />} />
-        <Route path="matricula" element={<PreMatricula />} />
 
         <Route path="*" element={<Navigate to="/dashboard" replace />} />
       </Route>

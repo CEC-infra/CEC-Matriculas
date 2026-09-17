@@ -1,80 +1,10 @@
-import { DATA } from '../data/content';
 import { Badge, Tile } from '../components/ui';
+import DataState from '../components/DataState';
+import { useAsyncData } from '../hooks/useAsyncData';
+import { getSettings } from '../services/data';
+import { date, money, shiftLabel } from '../lib/format';
 
 export default function Configuracoes() {
-  return (
-    <>
-      <div className="notice">
-        <Badge tone="warn">Somente leitura</Badge>
-        <span>
-          Os cadastros vêm da base da secretaria e das regras da campanha. Para alterar valores, séries ou
-          condições, fale com a coordenação — nada é editável por aqui.
-        </span>
-      </div>
-
-      <div className="table">
-        <div className="table-title">
-          <div className="card-title">Séries e valores 2027</div>
-          <div className="card-sub">Regra de transição de turma e mensalidade aplicável a cada família</div>
-        </div>
-        <div className="table-head cols-series">
-          <div>Turma atual</div>
-          <div>Próxima turma</div>
-          <div>Turno</div>
-          <div>Mensalidade</div>
-          <div>À vista (−8%)</div>
-          <div>Vagas</div>
-        </div>
-        {DATA.series.map((s) => (
-          <div className="table-row cols-series" style={{ cursor: 'default' }} key={s.from}>
-            <div className="cell-strong">{s.from}</div>
-            <div className="cell-strong" style={{ color: 'var(--navy)' }}>→ {s.to}</div>
-            <div className="cell is-secondary">{s.turno}</div>
-            <div className="cell-strong">{s.mensal}</div>
-            <div className="cell is-secondary">{s.avista}</div>
-            <div className="cell is-secondary">{s.vagas}</div>
-          </div>
-        ))}
-      </div>
-
-      <div className="card">
-        <div className="card-title">Condições de pagamento</div>
-        <div className="card-sub" style={{ marginBottom: 16 }}>
-          Definidas pela escola e aplicadas automaticamente na página do responsável
-        </div>
-        <div className="grid grid--3">
-          {DATA.conditions.map((c) => (
-            <div className="tile" key={c.label}>
-              <span className="stat-label">{c.label}</span>
-              <span className="tile-big">{c.value}</span>
-              <span className="meta" style={{ lineHeight: 1.5 }}>{c.sub}</span>
-            </div>
-          ))}
-        </div>
-      </div>
-
-      <div className="grid grid--main">
-        <div className="card">
-          <div className="card-title">Parâmetros da campanha</div>
-          <div className="card-sub" style={{ marginBottom: 16 }}>Configurados no início e válidos até o fim do período</div>
-          <div className="grid grid--3">
-            {DATA.campaignConfig.map((c) => <Tile key={c.label} {...c} />)}
-          </div>
-        </div>
-
-        <div className="card">
-          <div className="card-title">Documentos cadastrados</div>
-          <div className="card-sub" style={{ marginBottom: 16 }}>Anexados à jornada de cada família</div>
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
-            {DATA.docsConfig.map((d) => (
-              <div className="row-item" style={{ background: 'var(--surface)' }} key={d.label}>
-                <div className="who"><strong>{d.label}</strong><span>{d.sub}</span></div>
-                <strong style={{ fontSize: 12.5, color: 'var(--navy)' }}>{d.value}</strong>
-              </div>
-            ))}
-          </div>
-        </div>
-      </div>
-    </>
-  );
+  const { loading, data, error } = useAsyncData(getSettings, []);
+  return <DataState loading={loading} error={error} empty={!loading && !error && !data?.campaign}><div className="notice"><Badge tone="warn">Somente leitura</Badge><span>Os valores e regras são carregados diretamente da campanha ativa.</span></div><div className="table"><div className="table-title"><div className="card-title">Séries e valores {data?.campaign?.academic_year}</div><div className="card-sub">Vagas e condições vigentes no banco</div></div><div className="table-head cols-series"><div>Turma atual</div><div>Próxima turma</div><div>Turno</div><div>Mensalidade</div><div>À vista</div><div>Vagas</div></div>{(data?.offerings || []).map((item) => <div className="table-row cols-series" style={{ cursor: 'default' }} key={item.offering_id}><div className="cell-strong">{item.from_grade_name || 'Entrada nova'}</div><div className="cell-strong" style={{ color: 'var(--navy)' }}>→ {item.grade_name}</div><div className="cell is-secondary">{item.shifts.map(shiftLabel).join(' / ')}</div><div className="cell-strong">{money(item.amount_cents)}</div><div className="cell is-secondary">{money(item.cash_amount_cents)}</div><div className="cell is-secondary">{item.seats_available} vagas</div></div>)}</div><div className="card"><div className="card-title">Condições de pagamento</div><div className="grid grid--3" style={{ marginTop: 16 }}>{[['À vista', `${data?.policy?.cash_discount_pct || 0}% de desconto`, 'Condição configurada'], ['Parcelamento máximo', `${data?.policy?.max_installments || 1}x`, `até ${date(data?.policy?.last_due_date)}`], ['Formas aceitas', (data?.policy?.accepted_methods || []).join(' · ') || '—', 'Disponíveis na jornada'], ['Desconto de irmãos', `${data?.policy?.sibling_discount_pct || 0}%`, 'Aplicação individual'], ['Multa por atraso', `${data?.policy?.late_fee_pct || 0}% + ${data?.policy?.monthly_interest_pct || 0}% ao mês`, 'Conforme contrato'], ['Boleto', `${data?.policy?.boleto_due_business_days || 0} dias úteis`, 'Prazo configurado']].map(([label, value, sub]) => <Tile key={label} label={label} value={value} sub={sub} />)}</div></div><div className="grid grid--main"><div className="card"><div className="card-title">Parâmetros da campanha</div><div className="grid grid--3" style={{ marginTop: 16 }}>{[['Campanha ativa', data?.campaign?.name], ['Período', `${date(data?.campaign?.starts_on)} – ${date(data?.campaign?.ends_on)}`], ['Janela de envio', `${data?.campaign?.send_window_start?.slice(0, 5)} – ${data?.campaign?.send_window_end?.slice(0, 5)}`], ['Teto por hora', `${data?.campaign?.hourly_cap} mensagens`], ['Teto diário', `${data?.campaign?.daily_cap} mensagens`], ['Tentativas da régua', `${data?.campaign?.max_attempts} contatos`]].map(([label, value]) => <Tile key={label} label={label} value={value || '—'} />)}</div></div><div className="card"><div className="card-title">Documentos cadastrados</div><div style={{ display: 'flex', flexDirection: 'column', gap: 10, marginTop: 16 }}>{(data?.documents || []).map((item) => <div className="row-item" style={{ background: 'var(--surface)' }} key={item.id}><div className="who"><strong>{item.documents?.title}</strong><span>{item.documents?.requirement?.replaceAll('_', ' ')}</span></div><strong style={{ fontSize: 12.5, color: 'var(--navy)' }}>{item.version} · {item.pages || '—'} páginas</strong></div>)}</div></div></div></DataState>;
 }

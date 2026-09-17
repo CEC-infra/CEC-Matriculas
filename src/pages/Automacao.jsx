@@ -1,73 +1,18 @@
-import { DATA } from '../data/content';
+import { useState } from 'react';
 import { Badge, CardHead, KpiRow, Kv } from '../components/ui';
+import DataState from '../components/DataState';
+import { useAsyncData } from '../hooks/useAsyncData';
+import { getAutomation, setQueuePaused } from '../services/data';
+import { dateTime } from '../lib/format';
 
 export default function Automacao() {
-  const max = DATA.throughputMax;
-
-  return (
-    <>
-      <KpiRow items={DATA.campaignStats} cls="grid--4" valueSize={30} />
-
-      <div className="grid grid--split">
-        <div className="card">
-          <CardHead
-            title="Próximos a receber mensagem"
-            sub="Fila do lote das 15:00 · intervalo de 40 a 90 segundos entre envios"
-            right={<button type="button" className="btn">Pausar fila</button>}
-          />
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 9 }}>
-            {DATA.queue.map((q) => (
-              <div className="row-item" key={q.time}>
-                <span className="row-time">{q.time}</span>
-                <div className="who"><strong>{q.parent}</strong><span>{q.student}</span></div>
-                <span className="cell">{q.kind}</span>
-                <Badge tone="info">{q.attempt}</Badge>
-              </div>
-            ))}
-          </div>
-        </div>
-
-        <div className="stack">
-          <div className="card">
-            <div className="card-title">Mensagens por hora</div>
-            <div className="card-sub" style={{ marginBottom: 18 }}>Hoje · teto de 25 por hora</div>
-            <div className="bars">
-              {DATA.throughput.map((t, i) => (
-                <div className={`bar-col${i === DATA.throughput.length - 1 ? ' is-current' : ''}`} key={t.h}>
-                  <strong>{t.n}</strong>
-                  <div className="bar-plot"><i style={{ height: `${Math.round((t.n / max) * 100)}%` }} /></div>
-                  <small>{t.h}</small>
-                </div>
-              ))}
-            </div>
-          </div>
-
-          <div className="card card--navy">
-            <div className="card-title" style={{ marginBottom: 14 }}>Limites e proteção do número</div>
-            <div style={{ display: 'flex', flexDirection: 'column', gap: 11 }}>
-              {DATA.guards.map((g) => <Kv key={g.label} {...g} />)}
-            </div>
-          </div>
-        </div>
-      </div>
-
-      <div className="card">
-        <CardHead
-          title="Já atendidas"
-          sub="Famílias que a automação já contatou e receberam resposta"
-          right={<button type="button" className="btn">Ver todas · 318</button>}
-        />
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 9 }}>
-          {DATA.attended.map((a) => (
-            <div className="row-item" key={a.parent}>
-              <span className="row-time row-time--plain">{a.time}</span>
-              <div className="who"><strong>{a.parent}</strong><span>{a.student}</span></div>
-              <span className="cell" style={{ minWidth: 110 }}>Atendida pela {a.by}</span>
-              <Badge tone={a.tone}>{a.outcome}</Badge>
-            </div>
-          ))}
-        </div>
-      </div>
-    </>
-  );
+  const { loading, data, error, refresh } = useAsyncData(getAutomation, []);
+  const [updating, setUpdating] = useState(false);
+  const [message, setMessage] = useState('');
+  if (!data?.campaign) return <DataState loading={loading} error={error} empty={!loading && !error}><span /></DataState>;
+  const { campaign, stats = {}, queue = [], throughput = [], attended = [] } = data;
+  const max = Math.max(campaign.hourly_cap || 1, ...throughput.map((item) => Number(item.enviadas || 0)));
+  const kpis = [{ label: 'Na fila agora', value: stats.na_fila || 0, sub: stats.proximo_envio ? `próximo: ${dateTime(stats.proximo_envio)}` : 'sem próximo envio' }, { label: 'Mensagens por hora', value: stats.enviadas_ultima_hora || 0, sub: `limite ${campaign.hourly_cap}/h` }, { label: 'Enviadas hoje', value: stats.enviadas_hoje || 0, sub: `limite ${campaign.daily_cap}/dia` }, { label: 'Falhas em retry', value: stats.falhas_retry || 0, sub: 'acompanhar antes do próximo lote' }];
+  async function toggleQueue() { setUpdating(true); setMessage(''); try { await setQueuePaused(campaign.id, !campaign.queue_paused); setMessage(campaign.queue_paused ? 'Fila retomada.' : 'Fila pausada.'); await refresh(); } catch (err) { setMessage(err.message || 'Não foi possível atualizar a fila.'); } finally { setUpdating(false); } }
+  return <DataState loading={loading} error={error} empty={false}><KpiRow items={kpis} cls="grid--4" valueSize={30} />{message ? <div className="notice">{message}</div> : null}<div className="grid grid--split"><div className="card"><CardHead title="Próximos a receber mensagem" sub={`Campanha ${campaign.name}`} right={<button type="button" className="btn" onClick={toggleQueue} disabled={updating}>{updating ? 'Atualizando…' : campaign.queue_paused ? 'Retomar fila' : 'Pausar fila'}</button>} />{queue.length ? <div style={{ display: 'flex', flexDirection: 'column', gap: 9 }}>{queue.map((item) => <div className="row-item" key={item.id}><span className="row-time">{dateTime(item.scheduled_for)}</span><div className="who"><strong>{item.guardian_name}</strong><span>{item.student_name || '—'}</span></div><span className="cell">{item.template_name || 'Mensagem manual'}</span><Badge tone="info">Tentativa {item.attempt_number || '—'}</Badge></div>)}</div> : <div className="notice">Não há mensagens pendentes.</div>}</div><div className="stack"><div className="card"><div className="card-title">Mensagens por hora</div><div className="card-sub" style={{ marginBottom: 18 }}>Hoje · teto de {campaign.hourly_cap} por hora</div><div className="bars">{throughput.map((item) => <div className="bar-col" key={item.hora}><strong>{item.enviadas}</strong><div className="bar-plot"><i style={{ height: `${Math.round((item.enviadas / max) * 100)}%` }} /></div><small>{item.hora}h</small></div>)}</div></div><div className="card card--navy"><div className="card-title" style={{ marginBottom: 14 }}>Limites e proteção</div><Kv label="Janela de envio" value={`${campaign.send_window_start?.slice(0, 5)} – ${campaign.send_window_end?.slice(0, 5)}`} /><Kv label="Intervalo" value={`${campaign.min_interval_seconds} – ${campaign.max_interval_seconds} s`} /><Kv label="Status da fila" value={campaign.queue_paused ? 'Pausada' : 'Ativa'} /></div></div></div><div className="card"><CardHead title="Jornadas recentes" sub="Registros atualizados na campanha" /><div style={{ display: 'flex', flexDirection: 'column', gap: 9 }}>{attended.map((item) => <div className="row-item" key={item.id}><span className="row-time row-time--plain">{dateTime(item.updated_at)}</span><div className="who"><strong>{item.guardian_name}</strong><span>{item.student_name}</span></div><span className="cell">{item.status_label}</span><Badge tone="info">{item.attempts} tentativas</Badge></div>)}</div></div></DataState>;
 }

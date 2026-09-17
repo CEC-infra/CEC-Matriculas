@@ -2,3 +2,20 @@ node_modules
 dist
 .vite
 *.local
+.env
+.env.local
+.mcp.json
+
+# Credenciais e configurações locais
+.env.*
+!.env.example
+.codex/
+.supabase/
+supabase/.temp/
+.vercel/
+*.pem
+*.key
+*.p12
+*.pfx
+credentials*.json
+service-account*.json
