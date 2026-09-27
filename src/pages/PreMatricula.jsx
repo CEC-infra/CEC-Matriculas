@@ -3,9 +3,9 @@ import { Field, LogoBlocks } from '../components/ui';
 import DataState from '../components/DataState';
 import { useAsyncData } from '../hooks/useAsyncData';
 import { getPublicOfferings, submitPreEnrollment } from '../services/data';
-import { money, shiftLabel } from '../lib/format';
+import { money } from '../lib/format';
 
-const initialForm = { guardianName: '', phone: '', studentName: '', gradeId: '', currentSchool: '', shift: '', consent: false };
+const initialForm = { guardianName: '', phone: '', studentName: '', gradeId: '', currentSchool: '', consent: false };
 
 export default function PreMatricula() {
   const { loading, data, error } = useAsyncData(getPublicOfferings, []);
@@ -13,9 +13,7 @@ export default function PreMatricula() {
   const [sending, setSending] = useState(false);
   const [message, setMessage] = useState('');
   const update = (name) => (value) => setForm((current) => ({ ...current, [name]: value }));
-  const selected = data?.offerings.find((item) => item.grade_id === form.gradeId);
   const gradeOptions = (data?.offerings || []).map((item) => ({ value: item.grade_id, label: `${item.grades?.name || 'Série'} · ${money(item.amount_cents)}` }));
-  const shiftOptions = (selected?.shifts || []).map((item) => ({ value: item, label: shiftLabel(item) }));
 
   async function submit(event) {
     event.preventDefault();
@@ -32,7 +30,7 @@ export default function PreMatricula() {
   return (
     <div className="grid" style={{ gridTemplateColumns: '1fr 360px', gap: 28, alignItems: 'start' }}>
       <div className="public">
-        <div className="public-head--navy"><div style={{ display: 'flex', alignItems: 'center', gap: 12 }}><LogoBlocks /><span className="public-kicker">Matrículas 2027</span></div><h2>Comece a matrícula do seu filho em dois minutos</h2><p>Preencha os dados básicos e nossa equipe continua o atendimento pelo WhatsApp, com valores, turnos e vagas disponíveis.</p></div>
+        <div className="public-head--navy"><div style={{ display: 'flex', alignItems: 'center', gap: 12 }}><LogoBlocks /><span className="public-kicker">Matrículas 2027</span></div><h2>Comece a matrícula do seu filho em dois minutos</h2><p>Preencha os dados básicos e nossa equipe continua o atendimento pelo WhatsApp, com valores e vagas disponíveis.</p></div>
         <div className="public-body" style={{ padding: '30px 32px' }}>
           <DataState loading={loading} error={error} empty={!loading && !error && !data?.offerings?.length}>
             <form onSubmit={submit}>
@@ -42,7 +40,6 @@ export default function PreMatricula() {
                 <Field label="Nome do aluno" ph="Nome completo" value={form.studentName} onChange={update('studentName')} required />
                 <Field label="Série pretendida em 2027" ph="Selecionar série" value={form.gradeId} onChange={update('gradeId')} type="select" options={gradeOptions} required />
                 <Field label="Escola atual" ph="Opcional" value={form.currentSchool} onChange={update('currentSchool')} />
-                <Field label="Turno de preferência" ph="Selecionar turno" value={form.shift} onChange={update('shift')} type="select" options={shiftOptions} disabled={!form.gradeId} />
               </div>
               <label className="consent"><input type="checkbox" checked={form.consent} onChange={(event) => update('consent')(event.target.checked)} /><span>Autorizo o CEC a entrar em contato pelo WhatsApp sobre a matrícula.</span></label>
               {message ? <div className="notice" style={{ marginTop: 16 }}>{message}</div> : null}
@@ -51,7 +48,7 @@ export default function PreMatricula() {
           </DataState>
         </div>
       </div>
-      <div className="stack" style={{ gap: 16 }}><div className="card"><div className="card-title" style={{ marginBottom: 14 }}>O que acontece depois</div><div className="bullet-list">{['Atendimento pelo WhatsApp no mesmo dia', 'Valores, turnos e vagas atualizados', 'Visita agendada pela própria conversa', 'Matrícula concluída online, com assinatura digital'].map((item) => <div className="bullet" key={item}><i /><span>{item}</span></div>)}</div></div><div className="card card--navy"><div className="card-title" style={{ marginBottom: 10 }}>Dados protegidos</div><p style={{ fontSize: 13, color: 'var(--navy-soft)', lineHeight: 1.6 }}>Seu envio é registrado diretamente na campanha e tratado pela equipe da escola.</p></div></div>
+      <div className="stack" style={{ gap: 16 }}><div className="card"><div className="card-title" style={{ marginBottom: 14 }}>O que acontece depois</div><div className="bullet-list">{['Atendimento pelo WhatsApp no mesmo dia', 'Valores e vagas atualizados', 'Visita agendada pela própria conversa', 'Matrícula concluída online, com assinatura digital'].map((item) => <div className="bullet" key={item}><i /><span>{item}</span></div>)}</div></div><div className="card card--navy"><div className="card-title" style={{ marginBottom: 10 }}>Dados protegidos</div><p style={{ fontSize: 13, color: 'var(--navy-soft)', lineHeight: 1.6 }}>Seu envio é registrado diretamente na campanha e tratado pela equipe da escola.</p></div></div>
     </div>
   );
 }

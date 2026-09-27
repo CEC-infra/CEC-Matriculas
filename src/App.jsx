@@ -11,20 +11,21 @@ import Automacao from './pages/Automacao';
 import AssinaturaPagamento from './pages/AssinaturaPagamento';
 import Configuracoes from './pages/Configuracoes';
 import LinkRematricula from './pages/LinkRematricula';
-import PreMatricula from './pages/PreMatricula';
 import ContractSignature from './pages/ContractSignature';
 import LinkMatricula from './pages/LinkMatricula';
 import LinkGenerator from './pages/LinkGenerator';
 import AuthGate from './components/AuthGate';
+import EnrollmentOnboarding from './pages/EnrollmentOnboarding';
 
 /* Uma rota por tela. O detalhe da família tem rotas filhas — cada subaba é um
    caminho próprio, então recarregar ou compartilhar a URL cai na mesma aba. */
 export default function App() {
   return (
     <Routes>
-      <Route path="matricula" element={<PreMatricula />} />
+      <Route path="matricula" element={<EnrollmentOnboarding />} />
       <Route path="matricula/:token" element={<LinkMatricula />} />
-      <Route path="rematricula/:token?" element={<LinkRematricula />} />
+      <Route path="rematricula" element={<EnrollmentOnboarding initialFlow="rematricula" />} />
+      <Route path="rematricula/:token" element={<LinkRematricula />} />
       <Route path="contrato/:token" element={<ContractSignature />} />
       <Route element={<AuthGate><Layout /></AuthGate>}>
         <Route index element={<Navigate to="/dashboard" replace />} />

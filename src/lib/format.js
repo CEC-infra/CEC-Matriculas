@@ -18,7 +18,3 @@ export function statusTone(status) {
   if (['pre_matricula', 'formulario_iniciado', 'link_enviado'].includes(status)) return 'info';
   return 'mute';
 }
-
-export function shiftLabel(shift) {
-  return ({ manha: 'Manhã', tarde: 'Tarde', integral: 'Integral' })[shift] || '—';
-}

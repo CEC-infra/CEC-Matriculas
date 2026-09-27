@@ -2,6 +2,7 @@ import { useEffect } from 'react';
 import { NavLink, Outlet, matchPath, useLocation } from 'react-router-dom';
 import { DATA, findFamily } from '../data/content';
 import Icon from './Icon';
+import cecLogo from '../assets/cec-logo.png';
 
 /** Migalha e título do header, derivados da rota atual. */
 function headFor(pathname) {
@@ -17,15 +18,7 @@ function Sidebar() {
   return (
     <aside className="sidebar">
       <div className="brand">
-        <div className="logo">
-          <span className="logo-c">C</span>
-          <span className="logo-e">E</span>
-          <span className="logo-c2">C</span>
-        </div>
-        <div className="brand-text">
-          <strong>Matrícula Inteligente</strong>
-          <span>Centro Educacional Cristão</span>
-        </div>
+        <img className="brand-logo" src={cecLogo} alt="Centro Educacional Cristão" />
       </div>
 
       <nav className="nav">

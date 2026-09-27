@@ -97,7 +97,7 @@ export async function getSettings() {
 
 export async function getPublicOfferings() {
   const offerings = await supabase.select('grade_offerings', q({
-    select: 'id,grade_id,shifts,amount_cents,cash_amount_cents,seats_total,grades(name,sort_order)',
+    select: 'id,grade_id,amount_cents,cash_amount_cents,seats_total,grades(name,sort_order)',
     order: 'grades(sort_order).asc'
   }));
   return { offerings };
@@ -110,10 +110,58 @@ export function submitPreEnrollment(values) {
     p_student_name: values.studentName,
     p_target_grade_id: values.gradeId,
     p_whatsapp_consent: values.consent,
-    p_preferred_shift: values.shift || null,
     p_current_school: values.currentSchool || null,
     p_source: values.source || 'site',
     p_utm: Object.fromEntries(new URLSearchParams(window.location.search))
+  });
+}
+
+export function startEnrollmentOnboarding(flow, token = null) {
+  return supabase.rpc('onboarding_start', { p_flow: flow, p_token: token });
+}
+
+export function openEnrollmentOnboarding(token) {
+  return supabase.rpc('onboarding_open', { p_token: token });
+}
+
+export function identifyRematriculaOnboarding(token, values) {
+  return supabase.rpc('onboarding_identify_rematricula', {
+    p_token: token,
+    p_cpf: values.cpf,
+    p_phone: values.phone,
+    p_full_name: values.fullName || null
+  });
+}
+
+export function selectRematriculaChildren(token, studentIds) {
+  return supabase.rpc('onboarding_select_rematricula_children', { p_token: token, p_student_ids: studentIds });
+}
+
+export function createMatriculaOnboarding(token, values) {
+  return supabase.rpc('onboarding_create_matricula', {
+    p_token: token,
+    p_guardian_cpf: values.cpf,
+    p_guardian_name: values.fullName,
+    p_phone: values.phone,
+    p_email: values.email,
+    p_address: values.address,
+    p_children: values.children
+  });
+}
+
+export function prepareOnboardingContract(token, enrollmentId, email) {
+  return supabase.rpc('onboarding_prepare_individual_contract', {
+    p_token: token,
+    p_enrollment_id: enrollmentId,
+    p_confirmation_email: email || null
+  });
+}
+
+export function chooseOnboardingPayment(token, paymentPlanId, method) {
+  return supabase.rpc('onboarding_choose_payment', {
+    p_token: token,
+    p_payment_plan_id: paymentPlanId,
+    p_method: method
   });
 }
 
@@ -148,7 +196,6 @@ export function saveMatriculaLink(token, values) {
     p_birth_date: values.birthDate || null,
     p_previous_school: values.previousSchool || null,
     p_target_grade_id: values.gradeId || null,
-    p_target_shift: values.shift || null,
     p_payment_plan_id: values.planId || null
   });
 }
@@ -185,6 +232,15 @@ export function getContractSessions() {
   return supabase.select('v_contract_sessions', q({ select: '*', order: 'updated_at.desc' }));
 }
 
+export function getPaymentPlans(campaignId) {
+  if (!campaignId) return Promise.resolve([]);
+  return supabase.select('payment_plans', q({ select: '*', campaign_id: eq(campaignId), active: eq('true'), order: 'sort_order.asc' }));
+}
+
+export function setEnrollmentPaymentPlan(enrollmentId, paymentPlanId) {
+  return supabase.rpc('staff_set_enrollment_payment_plan', { p_enrollment_id: enrollmentId, p_payment_plan_id: paymentPlanId });
+}
+
 export async function createStaffEnrollment(values) {
   return supabase.rpc('staff_create_family_enrollment', {
     p_guardian_cpf: values.guardianCpf,
@@ -194,7 +250,6 @@ export async function createStaffEnrollment(values) {
     p_guardian_address: values.address,
     p_student_name: values.studentName,
     p_target_grade_id: values.gradeId,
-    p_target_shift: values.shift,
     p_student_birth_date: values.birthDate || null,
     p_current_school: values.currentSchool || null,
     p_source: values.source || 'outro',

@@ -98,7 +98,8 @@ a:hover { color: var(--navy); }
 .body { padding: 28px 34px 56px; display: flex; flex-direction: column; gap: 24px; }
 
 /* --- 4. Marca ------------------------------------------------------------ */
-.brand { display: flex; align-items: center; gap: 11px; }
+.brand { display: flex; align-items: center; justify-content: center; }
+.brand-logo { display: block; width: min(142px, 100%); height: auto; }
 .logo { display: flex; gap: 3px; }
 .logo span {
   width: 22px; height: 26px; border-radius: 7px;
@@ -351,7 +352,7 @@ a:hover { color: var(--navy); }
 .cols-families   { grid-template-columns: 26px 1.5fr 1.2fr 1.35fr 0.85fr 0.9fr 90px; }
 .cols-novas      { grid-template-columns: 1.3fr 1.2fr 1.15fr 0.85fr 0.8fr 80px; }
 .cols-matric     { grid-template-columns: 1.25fr 1.2fr 1fr 0.95fr 1fr 0.8fr; }
-.cols-series     { grid-template-columns: 1.1fr 1.1fr 0.75fr 0.9fr 0.9fr 0.8fr; }
+.cols-series     { grid-template-columns: 1.1fr 1.1fr 0.9fr 0.9fr 0.8fr; }
 
 /* --- 13. Subabas da família ---------------------------------------------- */
 .subnav { display: flex; flex-direction: column; margin-bottom: -8px; }
@@ -372,6 +373,7 @@ a:hover { color: var(--navy); }
 .modal-details { margin-top: 22px; padding-top: 18px; border-top: 1px solid var(--line-2); }
 .modal-details summary { cursor: pointer; font-weight: 700; font-size: 14px; }
 .modal-actions { display: flex; justify-content: flex-end; gap: 10px; margin-top: 24px; }
+.field-error { display: block; margin-top: 5px; color: #b8430e; font-size: 12px; font-weight: 700; }
 @media (max-width: 640px) {
   .modal-backdrop { padding: 10px; align-items: start; }
   .modal-card { max-height: calc(100vh - 20px); }
@@ -496,6 +498,52 @@ a:hover { color: var(--navy); }
 .public-foot { display: flex; align-items: center; justify-content: space-between; gap: 16px; flex-wrap: wrap; }
 .public-foot span { font-size: 12px; color: var(--ink-mute); max-width: 340px; line-height: 1.5; }
 .cta { background: var(--orange-deep); color: #fff; border-radius: var(--r-md); padding: 14px 26px; font-size: 14.5px; font-weight: 700; cursor: pointer; border: none; font-family: inherit; }
+
+/* Onboarding público: leitura confortável no celular e largura contida no desktop. */
+.onboarding-page { min-height: 100vh; padding: 18px 14px 42px; background: #F6F3EE; }
+.onboarding-shell { width: min(100%, 920px); margin: 0 auto; }
+.onboarding-head { padding: 26px 22px; }
+.onboarding-head h2 { font-size: clamp(26px, 4vw, 38px); }
+.onboarding-steps { padding: 13px 18px; }
+.onboarding-body { padding: 22px 18px 26px; gap: 20px; }
+.onboarding-form { display: flex; flex-direction: column; gap: 20px; }
+.onboarding-choice { width: min(100%, 520px); margin: 42px auto; padding: 28px 22px; border: 1px solid var(--line); border-radius: var(--r-2xl); background: var(--surface); box-shadow: 0 18px 44px rgb(18 42 76 / .12); display: flex; flex-direction: column; align-items: flex-start; gap: 15px; }
+.onboarding-choice > span { font-size: 12px; font-weight: 800; color: var(--orange-ink); letter-spacing: .8px; }
+.onboarding-choice h1 { font-family: var(--font-display); font-size: 30px; color: var(--navy); }
+.onboarding-choice p, .onboarding-child-editor p { margin: 0; color: var(--ink-mute); font-size: 13px; line-height: 1.55; }
+.onboarding-choice-actions { width: 100%; display: flex; flex-direction: column; gap: 10px; margin-top: 6px; }
+.onboarding-choice-actions > * { text-align: center; }
+.text-link { border: 0; padding: 0; background: transparent; color: var(--orange-ink); cursor: pointer; font: inherit; font-size: 13px; font-weight: 700; text-decoration: underline; }
+.onboarding-guardian { border-left: 3px solid var(--orange-deep); padding: 4px 0 4px 12px; display: flex; flex-direction: column; gap: 3px; }
+.onboarding-guardian strong { font-size: 15px; color: var(--navy); }
+.onboarding-guardian span { font-size: 12.5px; color: var(--ink-mute); line-height: 1.5; }
+.onboarding-children, .onboarding-contract-list { display: flex; flex-direction: column; gap: 10px; }
+.onboarding-child-card, .onboarding-contract-card { border: 1px solid var(--line-2); border-radius: var(--r-lg); padding: 14px; background: var(--surface-2); display: flex; align-items: center; gap: 12px; min-height: 68px; }
+.onboarding-child-card { cursor: pointer; }
+.onboarding-child-card.is-selected { border-color: var(--orange-deep); background: #FFF4E9; }
+.onboarding-child-card input { width: 19px; height: 19px; accent-color: var(--orange-deep); flex: 0 0 auto; }
+.onboarding-child-card span, .onboarding-contract-card > div { min-width: 0; display: flex; flex: 1; flex-direction: column; gap: 3px; }
+.onboarding-child-card strong, .onboarding-contract-card strong { color: var(--navy); font-size: 14px; }
+.onboarding-child-card small, .onboarding-contract-card span { color: var(--ink-mute); font-size: 12px; line-height: 1.35; }
+.onboarding-contract-card .btn { margin-left: auto; }
+.onboarding-child-editor { display: flex; flex-direction: column; gap: 14px; padding: 18px; border: 1px solid var(--line-2); background: var(--surface-2); border-radius: var(--r-lg); }
+.onboarding-child-editor h3 { margin: 0 0 4px; font-size: 16px; }
+.onboarding-child-fields { padding-top: 14px; border-top: 1px solid var(--line-2); display: grid; grid-template-columns: 1fr; gap: 13px; }
+.onboarding-methods { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+.onboarding-methods .btn { padding: 12px; }
+.contract-viewer { display: flex; flex-direction: column; gap: 10px; }
+.contract-viewer > div:first-child { display: flex; flex-direction: column; gap: 3px; }
+.contract-viewer span { color: var(--ink-mute); font-size: 12px; }
+.contract-pdf, .contract-pdf-unavailable { width: 100%; min-height: 390px; border: 1px solid var(--line-2); border-radius: var(--r-lg); background: var(--surface-2); }
+.contract-pdf-unavailable { display: grid; place-items: center; padding: 24px; text-align: center; color: var(--ink-mute); font-size: 13px; }
+@media (min-width: 700px) {
+  .onboarding-page { padding: 48px 28px 72px; }
+  .onboarding-head { padding: 34px 38px; }
+  .onboarding-steps { padding: 16px 38px; }
+  .onboarding-body { padding: 32px 38px 38px; }
+  .onboarding-choice { padding: 42px; margin-top: 70px; }
+  .onboarding-child-fields { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+}
 
 .bullet-list { display: flex; flex-direction: column; gap: 12px; }
 .bullet { display: flex; gap: 11px; align-items: flex-start; }

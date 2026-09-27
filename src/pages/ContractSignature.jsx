@@ -1,9 +1,9 @@
 import { useEffect, useRef, useState } from 'react';
-import { useParams } from 'react-router-dom';
+import { useNavigate, useParams, useSearchParams } from 'react-router-dom';
 import DataState from '../components/DataState';
 import { LogoBlocks } from '../components/ui';
 import { useAsyncData } from '../hooks/useAsyncData';
-import { money, shiftLabel } from '../lib/format';
+import { money } from '../lib/format';
 import { openContract, sendContractCode, signContract, verifyContractCode } from '../services/data';
 
 function SignaturePad({ onChange }) {
@@ -71,6 +71,8 @@ function SignaturePad({ onChange }) {
 
 export default function ContractSignature() {
   const { token } = useParams();
+  const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
   const contract = useAsyncData(() => openContract(token), [token]);
   const [code, setCode] = useState('');
   const [signerName, setSignerName] = useState('');
@@ -79,16 +81,28 @@ export default function ContractSignature() {
   const [message, setMessage] = useState('');
   const [busy, setBusy] = useState('');
   const [verified, setVerified] = useState(false);
+  const [resendIn, setResendIn] = useState(60);
+  const [codeSent, setCodeSent] = useState(false);
 
   useEffect(() => {
     if (contract.data?.guardian?.name && !signerName) setSignerName(contract.data.guardian.name);
     setVerified(Boolean(contract.data?.email_verified));
+    setCodeSent(contract.data?.status === 'codigo_enviado' || contract.data?.status === 'verificada');
+    if (contract.data?.status === 'pronta') setResendIn(0);
   }, [contract.data, signerName]);
+
+  useEffect(() => {
+    if (resendIn <= 0) return undefined;
+    const timer = window.setInterval(() => setResendIn((seconds) => Math.max(0, seconds - 1)), 1000);
+    return () => window.clearInterval(timer);
+  }, [resendIn]);
 
   async function resendCode() {
     setBusy('code'); setMessage('');
     try {
       await sendContractCode(token);
+      setResendIn(60);
+      setCodeSent(true);
       setMessage('Enviamos um novo código de confirmação para o e-mail informado.');
     } catch (error) { setMessage(error.message || 'Não foi possível solicitar o código.'); }
     finally { setBusy(''); }
@@ -117,5 +131,9 @@ export default function ContractSignature() {
 
   const data = contract.data;
   const signed = data?.status === 'assinada';
-  return <DataState loading={contract.loading} error={contract.error} empty={!contract.loading && !contract.error && !data}>{data ? <main className="auth-page" style={{ padding: '32px 18px' }}><section className="public public--single" style={{ width: 'min(860px, 100%)' }}><div className="public-head--navy"><div style={{ display: 'flex', alignItems: 'center', gap: 12 }}><LogoBlocks /><span className="public-kicker">Contrato digital</span></div><h2>Assinatura de matrícula</h2><p>Confira os dados, confirme o código enviado por e-mail e assine para concluir esta etapa.</p></div><div className="public-body"><div className="notice notice--soft"><span>Responsável: <strong>{data.guardian?.name}</strong> · confirmação em {data.email_masked}</span></div><div><h3 style={{ fontSize: 16, marginBottom: 10 }}>Alunos incluídos</h3><div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>{data.enrollments?.map((item) => <div className="row-item" style={{ background: 'var(--surface)' }} key={item.id}><div className="who"><strong>{item.student_name}</strong><span>{item.grade} · {shiftLabel(item.shift)} · {item.payment_plan || 'Condição a confirmar'}</span></div><strong>{money(item.amount_cents)}</strong></div>)}</div></div>{signed ? <div className="notice"><span>Contrato já assinado em segurança. A escola dará sequência ao envio dos boletos.</span></div> : <>{!verified ? <form onSubmit={confirmCode} style={{ display: 'flex', flexDirection: 'column', gap: 12 }}><div><h3 style={{ fontSize: 16, marginBottom: 5 }}>Confirme seu e-mail</h3><p className="meta">Digite o código de seis caracteres enviado para {data.email_masked}.</p></div><input className="input" required maxLength="6" value={code} onChange={(event) => setCode(event.target.value.toUpperCase())} placeholder="Ex.: A1B2C3" style={{ letterSpacing: 3, maxWidth: 260 }} /><div style={{ display: 'flex', gap: 10, flexWrap: 'wrap' }}><button className="btn btn--primary" disabled={busy === 'verify'}>{busy === 'verify' ? 'Confirmando…' : 'Confirmar código'}</button><button type="button" className="btn" onClick={resendCode} disabled={Boolean(busy)}>{busy === 'code' ? 'Enviando…' : 'Reenviar código'}</button></div></form> : <form onSubmit={submitSignature} style={{ display: 'flex', flexDirection: 'column', gap: 15 }}><div><h3 style={{ fontSize: 16, marginBottom: 5 }}>Assine o contrato</h3><p className="meta">Sua assinatura, confirmação de e-mail e data serão registradas como evidência do aceite.</p></div><label>Nome completo de quem assina<input className="input" required value={signerName} onChange={(event) => setSignerName(event.target.value)} /></label><SignaturePad onChange={setSignatureImage} /><label className="consent"><input type="checkbox" checked={accepted} onChange={(event) => setAccepted(event.target.checked)} /><span>Li e aceito o contrato referente aos alunos e condições acima.</span></label><button className="cta" disabled={busy === 'sign' || !signatureImage || !accepted}>{busy === 'sign' ? 'Registrando assinatura…' : 'Assinar contrato'}</button></form>}{message ? <div className="notice"><span>{message}</span></div> : null}</>}</div></section></main> : null}</DataState>;
+  const contractPdf = data?.enrollments?.[0]?.contract?.storage_path;
+  const resumeToken = searchParams.get('j');
+  const resumeFlow = searchParams.get('f') === 'matricula_nova' ? 'matricula_nova' : 'rematricula';
+  const resumePath = resumeFlow === 'matricula_nova' ? '/matricula' : '/rematricula';
+  return <DataState loading={contract.loading} error={contract.error} empty={!contract.loading && !contract.error && !data}>{data ? <main className="auth-page" style={{ padding: '32px 18px' }}><section className="public public--single" style={{ width: 'min(860px, 100%)' }}><div className="public-head--navy"><div style={{ display: 'flex', alignItems: 'center', gap: 12 }}><LogoBlocks /><span className="public-kicker">Contrato digital</span></div><h2>Assinatura de matrícula</h2><p>Leia o documento, confirme o e-mail e assine para concluir esta etapa.</p></div><div className="public-body"><div className="notice notice--soft"><span>Responsável: <strong>{data.guardian?.name}</strong> · confirmação em {data.email_masked}</span></div><div><h3 style={{ fontSize: 16, marginBottom: 10 }}>Aluno</h3><div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>{data.enrollments?.map((item) => <div className="row-item" style={{ background: 'var(--surface)' }} key={item.id}><div className="who"><strong>{item.student_name}</strong><span>{item.grade}</span></div><strong>{money(item.amount_cents)}</strong></div>)}</div></div><section className="contract-viewer"><div><strong>Leia o contrato</strong><span>Deslize para ler todo o documento antes de assinar.</span></div>{contractPdf ? <iframe title="Contrato em PDF" src={contractPdf} className="contract-pdf" /> : <div className="contract-pdf-unavailable">O PDF desta versão ainda não foi disponibilizado pela escola.</div>}</section>{signed ? <div className="notice"><span>Contrato já assinado em segurança.</span>{resumeToken ? <button className="btn" onClick={() => navigate(`${resumePath}?j=${encodeURIComponent(resumeToken)}&f=${resumeFlow}`)}>Voltar para a matrícula</button> : null}</div> : <>{!verified ? <form onSubmit={codeSent ? confirmCode : (event) => { event.preventDefault(); resendCode(); }} style={{ display: 'flex', flexDirection: 'column', gap: 12 }}><div><h3 style={{ fontSize: 16, marginBottom: 5 }}>{codeSent ? 'Confirme seu e-mail' : 'Pronto para assinar?'}</h3><p className="meta">{codeSent ? `Digite o código de seis caracteres enviado para ${data.email_masked}.` : `Ao continuar, enviaremos um código de confirmação para ${data.email_masked}.`}</p></div>{codeSent ? <input className="input" required maxLength="6" value={code} onChange={(event) => setCode(event.target.value.toUpperCase())} placeholder="Ex.: A1B2C3" style={{ letterSpacing: 3, maxWidth: 260 }} /> : null}<div style={{ display: 'flex', gap: 10, flexWrap: 'wrap' }}><button className="btn btn--primary" disabled={Boolean(busy)}>{busy === 'code' ? 'Enviando…' : busy === 'verify' ? 'Confirmando…' : codeSent ? 'Confirmar código' : 'Enviar código para assinar'}</button>{codeSent ? <button type="button" className="btn" onClick={resendCode} disabled={Boolean(busy) || resendIn > 0}>{resendIn > 0 ? `Reenviar em ${resendIn}s` : 'Reenviar código'}</button> : null}</div></form> : <form onSubmit={submitSignature} style={{ display: 'flex', flexDirection: 'column', gap: 15 }}><div><h3 style={{ fontSize: 16, marginBottom: 5 }}>Assine o contrato</h3><p className="meta">No celular, vire-o na horizontal se preferir uma área maior. A assinatura, o e-mail confirmado, a data, o PDF e sua impressão digital serão registrados.</p></div><label>Nome completo de quem assina<input className="input" required value={signerName} onChange={(event) => setSignerName(event.target.value)} /></label><SignaturePad onChange={setSignatureImage} /><label className="consent"><input type="checkbox" checked={accepted} onChange={(event) => setAccepted(event.target.checked)} /><span>Li e aceito o contrato referente ao aluno acima.</span></label><button className="cta" disabled={busy === 'sign' || !signatureImage || !accepted}>{busy === 'sign' ? 'Registrando assinatura…' : 'Assinar contrato'}</button></form>}{message ? <div className="notice"><span>{message}</span>{message.includes('sucesso') && resumeToken ? <button className="btn" onClick={() => navigate(`${resumePath}?j=${encodeURIComponent(resumeToken)}&f=${resumeFlow}`)}>Voltar para a matrícula</button> : null}</div> : null}</>}</div></section></main> : null}</DataState>;
 }

@@ -210,12 +210,12 @@ export const DATA = {
   novasFilters: ['Todas', 'Pré-matrícula', 'Matrícula em andamento', 'Efetivada'],
 
   novas: [
-    { id: 'rafael-monteiro',  parent: 'Rafael Monteiro',  phone: '(83) 99220-7781', student: 'Théo Monteiro',    target: 'Infantil IV · manhã', stage: 'Pré-matrícula',          tone: 'warn', origin: 'Site',             when: 'hoje 14:20' },
-    { id: 'bianca-furtado',   parent: 'Bianca Furtado',   phone: '(83) 98866-1204', student: 'Manuela Furtado',  target: '1º ano · manhã',      stage: 'Matrícula em andamento', tone: 'info', origin: 'Indicação',        when: 'hoje 13:05' },
-    { id: 'otavio-serrano',   parent: 'Otávio Serrano',   phone: '(83) 99411-3390', student: 'Enzo Serrano',     target: '4º ano · tarde',      stage: 'Pré-matrícula',          tone: 'warn', origin: 'Instagram',        when: 'hoje 11:48' },
-    { id: 'larissa-coelho',   parent: 'Larissa Coelho',   phone: '(83) 98123-5566', student: 'Helena Coelho',    target: '2º ano · manhã',      stage: 'Efetivada',              tone: 'ok',   origin: 'Visita presencial', when: 'ontem 16:32' },
-    { id: 'diego-ramalho',    parent: 'Diego Ramalho',    phone: '(83) 99677-8820', student: 'Arthur Ramalho',   target: '6º ano · manhã',      stage: 'Matrícula em andamento', tone: 'info', origin: 'Site',             when: 'ontem 15:10' },
-    { id: 'priscila-vasques', parent: 'Priscila Vasques', phone: '(83) 98330-4417', student: 'Laura Vasques',    target: 'Infantil V · manhã',  stage: 'Efetivada',              tone: 'ok',   origin: 'Indicação',        when: 'ontem 09:58' }
+    { id: 'rafael-monteiro',  parent: 'Rafael Monteiro',  phone: '(83) 99220-7781', student: 'Théo Monteiro',    target: 'Infantil IV', stage: 'Pré-matrícula',          tone: 'warn', origin: 'Site',             when: 'hoje 14:20' },
+    { id: 'bianca-furtado',   parent: 'Bianca Furtado',   phone: '(83) 98866-1204', student: 'Manuela Furtado',  target: '1º ano',      stage: 'Matrícula em andamento', tone: 'info', origin: 'Indicação',        when: 'hoje 13:05' },
+    { id: 'otavio-serrano',   parent: 'Otávio Serrano',   phone: '(83) 99411-3390', student: 'Enzo Serrano',     target: '4º ano',      stage: 'Pré-matrícula',          tone: 'warn', origin: 'Instagram',        when: 'hoje 11:48' },
+    { id: 'larissa-coelho',   parent: 'Larissa Coelho',   phone: '(83) 98123-5566', student: 'Helena Coelho',    target: '2º ano',      stage: 'Efetivada',              tone: 'ok',   origin: 'Visita presencial', when: 'ontem 16:32' },
+    { id: 'diego-ramalho',    parent: 'Diego Ramalho',    phone: '(83) 99677-8820', student: 'Arthur Ramalho',   target: '6º ano',      stage: 'Matrícula em andamento', tone: 'info', origin: 'Site',             when: 'ontem 15:10' },
+    { id: 'priscila-vasques', parent: 'Priscila Vasques', phone: '(83) 98330-4417', student: 'Laura Vasques',    target: 'Infantil V',  stage: 'Efetivada',              tone: 'ok',   origin: 'Indicação',        when: 'ontem 09:58' }
   ],
 
   novaForm: [
@@ -223,7 +223,6 @@ export const DATA = {
     { label: 'WhatsApp',            ph: '(83) 9 0000-0000' },
     { label: 'Nome do aluno',       ph: 'Nome completo' },
     { label: 'Série pretendida',    ph: 'Selecionar série' },
-    { label: 'Turno',               ph: 'Manhã ou tarde' },
     { label: 'Origem do contato',   ph: 'Visita, telefone, indicação…' }
   ],
 
@@ -272,17 +271,17 @@ export const DATA = {
   ],
 
   series: [
-    { from: 'Infantil IV', to: 'Infantil V', turno: 'Manhã',         mensal: 'R$ 968',   avista: 'R$ 891',   vagas: '12 vagas' },
-    { from: 'Infantil V',  to: '1º ano',     turno: 'Manhã',         mensal: 'R$ 1.040', avista: 'R$ 957',   vagas: '8 vagas' },
-    { from: '1º ano',      to: '2º ano',     turno: 'Manhã / Tarde', mensal: 'R$ 1.185', avista: 'R$ 1.090', vagas: '6 vagas' },
-    { from: '2º ano',      to: '3º ano',     turno: 'Manhã / Tarde', mensal: 'R$ 1.242', avista: 'R$ 1.143', vagas: '9 vagas' },
-    { from: '3º ano',      to: '4º ano',     turno: 'Manhã / Tarde', mensal: 'R$ 1.310', avista: 'R$ 1.205', vagas: '4 vagas' },
-    { from: '4º ano',      to: '5º ano',     turno: 'Manhã',         mensal: 'R$ 1.386', avista: 'R$ 1.275', vagas: '7 vagas' },
-    { from: '5º ano',      to: '6º ano',     turno: 'Manhã',         mensal: 'R$ 1.458', avista: 'R$ 1.341', vagas: '11 vagas' },
-    { from: '6º ano',      to: '7º ano',     turno: 'Manhã',         mensal: 'R$ 1.520', avista: 'R$ 1.398', vagas: '5 vagas' },
-    { from: '7º ano',      to: '8º ano',     turno: 'Manhã',         mensal: 'R$ 1.584', avista: 'R$ 1.457', vagas: '3 vagas' },
-    { from: '8º ano',      to: '9º ano',     turno: 'Manhã',         mensal: 'R$ 1.642', avista: 'R$ 1.510', vagas: '6 vagas' },
-    { from: '9º ano',      to: '1ª série',   turno: 'Manhã',         mensal: 'R$ 1.780', avista: 'R$ 1.637', vagas: '10 vagas' }
+    { from: 'Infantil IV', to: 'Infantil V', mensal: 'R$ 968',   avista: 'R$ 891',   vagas: '12 vagas' },
+    { from: 'Infantil V',  to: '1º ano',     mensal: 'R$ 1.040', avista: 'R$ 957',   vagas: '8 vagas' },
+    { from: '1º ano',      to: '2º ano',     mensal: 'R$ 1.185', avista: 'R$ 1.090', vagas: '6 vagas' },
+    { from: '2º ano',      to: '3º ano',     mensal: 'R$ 1.242', avista: 'R$ 1.143', vagas: '9 vagas' },
+    { from: '3º ano',      to: '4º ano',     mensal: 'R$ 1.310', avista: 'R$ 1.205', vagas: '4 vagas' },
+    { from: '4º ano',      to: '5º ano',     mensal: 'R$ 1.386', avista: 'R$ 1.275', vagas: '7 vagas' },
+    { from: '5º ano',      to: '6º ano',     mensal: 'R$ 1.458', avista: 'R$ 1.341', vagas: '11 vagas' },
+    { from: '6º ano',      to: '7º ano',     mensal: 'R$ 1.520', avista: 'R$ 1.398', vagas: '5 vagas' },
+    { from: '7º ano',      to: '8º ano',     mensal: 'R$ 1.584', avista: 'R$ 1.457', vagas: '3 vagas' },
+    { from: '8º ano',      to: '9º ano',     mensal: 'R$ 1.642', avista: 'R$ 1.510', vagas: '6 vagas' },
+    { from: '9º ano',      to: '1ª série',   mensal: 'R$ 1.780', avista: 'R$ 1.637', vagas: '10 vagas' }
   ],
 
   conditions: [
@@ -342,12 +341,11 @@ export const DATA = {
     { label: 'Nome do aluno',             ph: 'Nome completo' },
     { label: 'Série pretendida em 2027',  ph: 'Ex.: 3º ano' },
     { label: 'Escola atual',              ph: 'Opcional' },
-    { label: 'Turno de preferência',      ph: 'Manhã ou tarde' }
   ],
 
   preBenefits: [
     'Atendimento pelo WhatsApp no mesmo dia',
-    'Valores, turnos e vagas sem precisar ligar',
+    'Valores e vagas sem precisar ligar',
     'Visita agendada pela própria conversa',
     'Matrícula concluída online, com assinatura digital'
   ]
