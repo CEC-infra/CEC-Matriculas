@@ -182,6 +182,15 @@ export function createPersonalizedEnrollmentLink(enrollmentId) {
   return supabase.rpc('create_personalized_enrollment_link', { p_enrollment_id: enrollmentId });
 }
 
+export function getActiveEnrollmentLinks() {
+  return supabase.select('enrollment_links', q({
+    select: 'enrollment_id,token,expires_at,created_at',
+    revoked_at: 'is.null',
+    expires_at: `gt.${new Date().toISOString()}`,
+    order: 'created_at.desc'
+  }));
+}
+
 export function openMatriculaLink(token) {
   return supabase.rpc('matricula_link_open', { p_token: token });
 }

@@ -1,6 +1,7 @@
-import { useEffect } from 'react';
+import { useEffect, useState } from 'react';
 import { NavLink, Outlet, matchPath, useLocation } from 'react-router-dom';
 import { DATA, findFamily } from '../data/content';
+import { FamilyHeaderContext } from '../contexts/FamilyHeaderContext';
 import Icon from './Icon';
 import cecLogo from '../assets/cec-logo.png';
 
@@ -73,17 +74,23 @@ function Topbar({ crumb, title }) {
 
 export default function Layout() {
   const { pathname } = useLocation();
-  const [crumb, title] = headFor(pathname);
+  const [familyHeader, setFamilyHeader] = useState(null);
+  const familyRoute = matchPath('/familias/:id/*', pathname) || matchPath('/familias/:id', pathname);
+  const [fallbackCrumb, fallbackTitle] = headFor(pathname);
+  const useLiveHeader = familyRoute && familyHeader?.enrollmentId === familyRoute.params.id;
+  const crumb = useLiveHeader ? familyHeader.crumb : fallbackCrumb;
+  const title = useLiveHeader ? familyHeader.title : fallbackTitle;
 
   useEffect(() => { window.scrollTo(0, 0); }, [pathname]);
   useEffect(() => { document.title = title ? `${title} · CEC` : 'CEC · Matrícula Inteligente'; }, [title]);
+  useEffect(() => { if (!familyRoute) setFamilyHeader(null); }, [familyRoute]);
 
   return (
     <div className="shell">
       <Sidebar />
       <main className="main">
         <Topbar crumb={crumb} title={title} />
-        <div className="body"><Outlet /></div>
+        <div className="body"><FamilyHeaderContext.Provider value={setFamilyHeader}><Outlet /></FamilyHeaderContext.Provider></div>
       </main>
     </div>
   );

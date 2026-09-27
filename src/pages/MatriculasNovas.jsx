@@ -23,7 +23,7 @@ function isValidCpf(value) {
   return digit(10) === Number(cpf[9]) && digit(11) === Number(cpf[10]);
 }
 
-function FamilyModal({ form, onChange, onClear, onClose, onSubmit, saving, message, gradeOptions }) {
+function FamilyModal({ form, onChange, onClear, onClose, onSubmit, saving, message, createdLink, onOpenFamily, gradeOptions }) {
   const update = (field) => (value) => onChange((current) => ({ ...current, [field]: value }));
   const cpfInvalid = form.guardianCpf.length > 0 && !isValidCpf(form.guardianCpf);
   return <div className="modal-backdrop" role="presentation" onMouseDown={(event) => { if (event.target === event.currentTarget && !saving) onClose(); }}>
@@ -49,7 +49,8 @@ function FamilyModal({ form, onChange, onClear, onClose, onSubmit, saving, messa
           <div style={{ gridColumn: '1 / -1' }}><Field label="Observações" ph="Opcional" value={form.notes} onChange={update('notes')} /></div>
         </div></details>
         {message ? <div className="notice">{message}</div> : null}
-        <div className="modal-actions"><button type="button" className="btn" onClick={onClear} disabled={saving}>Limpar dados</button><button type="button" className="btn" onClick={onClose} disabled={saving}>Cancelar</button><button type="submit" className="btn btn--primary" disabled={saving}>{saving ? 'Cadastrando…' : 'Cadastrar e iniciar atendimento'}</button></div>
+        {createdLink ? <div className="notice" style={{ marginTop: 14, alignItems: 'flex-start', flexDirection: 'column' }}><span>Link individual criado para esta matrícula:</span><code style={{ overflowWrap: 'anywhere' }}>{createdLink}</code><div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}><button type="button" className="btn" onClick={() => navigator.clipboard?.writeText(createdLink)}>Copiar link</button><button type="button" className="btn btn--primary" onClick={onOpenFamily}>Abrir família</button></div></div> : null}
+        <div className="modal-actions">{createdLink ? <button type="button" className="btn" onClick={onClear}>Cadastrar outra família</button> : <><button type="button" className="btn" onClick={onClear} disabled={saving}>Limpar dados</button><button type="button" className="btn" onClick={onClose} disabled={saving}>Cancelar</button><button type="submit" className="btn btn--primary" disabled={saving}>{saving ? 'Cadastrando…' : 'Cadastrar e iniciar atendimento'}</button></>}</div>
       </form>
     </section>
   </div>;
@@ -62,21 +63,23 @@ export default function MatriculasNovas() {
   const [message, setMessage] = useState('');
   const [saving, setSaving] = useState(false);
   const [showModal, setShowModal] = useState(false);
+  const [created, setCreated] = useState(null);
   const enrollments = useAsyncData(() => getEnrollments({ kind: 'matricula_nova' }), []);
   const offerings = useAsyncData(getPublicOfferings, []);
   const rows = (enrollments.data || []).filter((item) => filter === 'Todas' || item.status_label === filter);
   const gradeOptions = (offerings.data?.offerings || []).map((item) => ({ value: item.grade_id, label: `${item.grades?.name} · ${money(item.amount_cents)}` }));
   const stats = [{ label: 'Pré-matrículas', value: (enrollments.data || []).filter((item) => item.status === 'pre_matricula').length, sub: 'formulário público' }, { label: 'Em atendimento', value: (enrollments.data || []).filter((item) => !item.completed_at && item.status !== 'pre_matricula').length, sub: 'jornadas ativas' }, { label: 'Matrículas efetivadas', value: (enrollments.data || []).filter((item) => item.completed_at).length, sub: 'concluídas' }, { label: 'Total da campanha', value: enrollments.data?.length || 0, sub: 'dados reais' }];
-  function openModal() { setMessage(''); setShowModal(true); }
-  function closeModal() { if (!saving) { setShowModal(false); setMessage(''); } }
-  function clearModal() { if (!saving) { setForm(emptyForm); setMessage(''); } }
+  function openModal() { setMessage(''); setCreated(null); setShowModal(true); }
+  function closeModal() { if (!saving) { setShowModal(false); setMessage(''); setCreated(null); } }
+  function clearModal() { if (!saving) { setForm(emptyForm); setMessage(''); setCreated(null); } }
   async function submit(event) {
     event.preventDefault(); setSaving(true); setMessage('');
     if (!isValidCpf(form.guardianCpf)) { setSaving(false); setMessage('CPF inválido. Confira os 11 dígitos antes de cadastrar.'); return; }
     try {
       const result = await createStaffEnrollment(form);
-      setForm(emptyForm); setShowModal(false); await enrollments.refresh(); navigate(`/familias/${result.id}`);
+      const link = result.link_token ? `${window.location.origin}/matricula/${result.link_token}` : null;
+      setCreated({ id: result.id, link }); setMessage(link ? 'Família cadastrada. O link individual já está pronto.' : 'Família cadastrada.'); await enrollments.refresh();
     } catch (err) { setMessage(err.message || 'Não foi possível cadastrar a família.'); } finally { setSaving(false); }
   }
-  return <><KpiRow items={stats} cls="grid--4" valueSize={30} /><div className="page-actions"><button type="button" className="btn btn--primary" onClick={openModal}>Cadastrar família</button></div><div className="stack" style={{ gap: 14 }}><div className="chip-row"><Chips items={['Todas', 'Pré-matrícula', 'Em fila', 'Concluída']} active={filter} onSelect={setFilter} /></div><DataState loading={enrollments.loading} error={enrollments.error} empty={!enrollments.loading && !enrollments.error && !enrollments.data?.length}><div className="table"><div className="table-head cols-novas"><div>Responsável</div><div>Aluno</div><div>Série pretendida</div><div>Etapa</div><div>Origem</div><div /></div>{rows.map((item) => <div className="table-row cols-novas" key={item.id} onClick={() => navigate(`/familias/${item.id}`)}><div className="cell-stack"><strong className="cell-strong">{item.guardian_name}</strong><span>{item.guardian_phone}</span></div><div className="cell-stack"><span className="cell">{item.student_name}</span><span>{dateTime(item.created_at)}</span></div><div className="cell is-secondary">{item.target_grade_name}</div><div><Badge tone={statusTone(item.status)}>{item.status_label}</Badge></div><div className="cell is-secondary">{item.origin}</div><div className="cell-open is-secondary">Abrir →</div></div>)}</div></DataState></div>{showModal ? <FamilyModal form={form} onChange={setForm} onClear={clearModal} onClose={closeModal} onSubmit={submit} saving={saving} message={message} gradeOptions={gradeOptions} /> : null}</>;
+  return <><KpiRow items={stats} cls="grid--4" valueSize={30} /><div className="page-actions"><button type="button" className="btn btn--primary" onClick={openModal}>Cadastrar família</button></div><div className="stack" style={{ gap: 14 }}><div className="chip-row"><Chips items={['Todas', 'Pré-matrícula', 'Em fila', 'Concluída']} active={filter} onSelect={setFilter} /></div><DataState loading={enrollments.loading} error={enrollments.error} empty={!enrollments.loading && !enrollments.error && !enrollments.data?.length}><div className="table"><div className="table-head cols-novas"><div>Responsável</div><div>Aluno</div><div>Série pretendida</div><div>Etapa</div><div>Origem</div><div /></div>{rows.map((item) => <div className="table-row cols-novas" key={item.id} onClick={() => navigate(`/familias/${item.id}`)}><div className="cell-stack"><strong className="cell-strong">{item.guardian_name}</strong><span>{item.guardian_phone}</span></div><div className="cell-stack"><span className="cell">{item.student_name}</span><span>{dateTime(item.created_at)}</span></div><div className="cell is-secondary">{item.target_grade_name}</div><div><Badge tone={statusTone(item.status)}>{item.status_label}</Badge></div><div className="cell is-secondary">{item.origin}</div><div className="cell-open is-secondary">Abrir →</div></div>)}</div></DataState></div>{showModal ? <FamilyModal form={form} onChange={setForm} onClear={clearModal} onClose={closeModal} onSubmit={submit} saving={saving} message={message} createdLink={created?.link} onOpenFamily={() => navigate(`/familias/${created.id}`)} gradeOptions={gradeOptions} /> : null}</>;
 }
