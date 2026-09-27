@@ -26,12 +26,13 @@ export const DATA = {
     '/assinatura-e-pagamento': ['Conclusão da jornada', 'Assinatura digital e pagamento'],
     '/configuracoes':          ['Cadastros da campanha · somente leitura', 'Configurações'],
     '/rematricula':            ['Jornada online do responsável', 'Página individual de rematrícula'],
-    '/matricula':              ['Novas matrículas', 'Link público de pré-matrícula']
+    '/matricula':              ['Novas matrículas', 'Link público de pré-matrícula'],
+    '/links':                  ['Links individuais', 'Gerar e copiar links por responsável']
   },
 
   headerLinks: [
-    { path: '/rematricula', label: 'Link de rematrícula',    url: 'cec.app/rematricula', icon: 'link',    dot: '#F07E26' },
-    { path: '/matricula',   label: 'Link de matrícula nova', url: 'cec.app/matricula',   icon: 'sparkle', dot: '#3AA757' }
+    { path: '/links?tipo=rematricula', label: 'Link de rematrícula', url: 'gerar individual', icon: 'link', dot: '#F07E26' },
+    { path: '/links?tipo=matricula_nova', label: 'Link de matrícula nova', url: 'gerar individual', icon: 'sparkle', dot: '#3AA757' }
   ],
 
   dashLinks: [

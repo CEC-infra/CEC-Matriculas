@@ -130,23 +130,77 @@ export function saveRematricula(token, values) {
   });
 }
 
+export function createPersonalizedEnrollmentLink(enrollmentId) {
+  return supabase.rpc('create_personalized_enrollment_link', { p_enrollment_id: enrollmentId });
+}
+
+export function openMatriculaLink(token) {
+  return supabase.rpc('matricula_link_open', { p_token: token });
+}
+
+export function saveMatriculaLink(token, values) {
+  return supabase.rpc('matricula_link_save', {
+    p_token: token,
+    p_guardian_name: values.guardianName,
+    p_email: values.email || null,
+    p_phone: values.phone || null,
+    p_student_name: values.studentName,
+    p_birth_date: values.birthDate || null,
+    p_previous_school: values.previousSchool || null,
+    p_target_grade_id: values.gradeId || null,
+    p_target_shift: values.shift || null,
+    p_payment_plan_id: values.planId || null
+  });
+}
+
+export function startContract(enrollmentId, confirmationEmail) {
+  return supabase.rpc('contract_create_session', {
+    p_enrollment_id: enrollmentId,
+    p_confirmation_email: confirmationEmail || null
+  });
+}
+
+export function openContract(token) {
+  return supabase.rpc('contract_open', { p_token: token });
+}
+
+export function sendContractCode(token) {
+  return supabase.rpc('contract_send_email_code', { p_token: token });
+}
+
+export function verifyContractCode(token, code) {
+  return supabase.rpc('contract_verify_email_code', { p_token: token, p_code: code });
+}
+
+export function signContract(token, values) {
+  return supabase.rpc('contract_sign', {
+    p_token: token,
+    p_signer_full_name: values.signerName,
+    p_signature_image_data: values.signatureImage,
+    p_accepted: values.accepted
+  });
+}
+
+export function getContractSessions() {
+  return supabase.select('v_contract_sessions', q({ select: '*', order: 'updated_at.desc' }));
+}
+
 export async function createStaffEnrollment(values) {
-  const campaign = await getActiveCampaign('matricula_nova');
-  if (!campaign) throw new Error('Não há campanha de matrícula nova ativa.');
-  const normalizedPhone = await supabase.rpc('normalize_phone_br', { raw: values.phone });
-  if (!normalizedPhone) throw new Error('Informe um WhatsApp válido.');
-  let guardian = first(await supabase.select('guardians', q({ select: '*', phone: eq(normalizedPhone) })));
-  if (!guardian) guardian = first(await supabase.insert('guardians', { full_name: values.guardianName, phone: normalizedPhone, whatsapp_consent_at: new Date().toISOString() }));
-  const student = first(await supabase.insert('students', { full_name: values.studentName, previous_school: values.currentSchool || null }));
-  await supabase.insert('student_guardians', { student_id: student.id, guardian_id: guardian.id, is_financial: true, is_primary_contact: true });
-  const offering = first(await supabase.select('grade_offerings', q({ select: '*', academic_year: eq(campaign.academic_year), grade_id: eq(values.gradeId) })));
-  const enrollment = first(await supabase.insert('enrollments', {
-    campaign_id: campaign.id, guardian_id: guardian.id, student_id: student.id,
-    origin: values.source || 'outro', target_grade_id: values.gradeId, target_shift: values.shift || null,
-    status: 'em_fila', amount_cents: offering?.amount_cents || null
-  }));
-  await supabase.insert('enrollment_events', { enrollment_id: enrollment.id, code: 'STAFF_CREATED', title: 'Cadastro criado pela equipe', body: 'Família adicionada ao atendimento.', actor: 'equipe' });
-  return enrollment;
+  return supabase.rpc('staff_create_family_enrollment', {
+    p_guardian_cpf: values.guardianCpf,
+    p_guardian_name: values.guardianName,
+    p_guardian_phone: values.phone,
+    p_guardian_email: values.email,
+    p_guardian_address: values.address,
+    p_student_name: values.studentName,
+    p_target_grade_id: values.gradeId,
+    p_target_shift: values.shift,
+    p_student_birth_date: values.birthDate || null,
+    p_current_school: values.currentSchool || null,
+    p_source: values.source || 'outro',
+    p_relationship: values.relationship || null,
+    p_guardian_notes: values.notes || null
+  });
 }
 
 export function setQueuePaused(campaignId, paused) {

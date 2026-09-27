@@ -12,6 +12,9 @@ import AssinaturaPagamento from './pages/AssinaturaPagamento';
 import Configuracoes from './pages/Configuracoes';
 import LinkRematricula from './pages/LinkRematricula';
 import PreMatricula from './pages/PreMatricula';
+import ContractSignature from './pages/ContractSignature';
+import LinkMatricula from './pages/LinkMatricula';
+import LinkGenerator from './pages/LinkGenerator';
 import AuthGate from './components/AuthGate';
 
 /* Uma rota por tela. O detalhe da família tem rotas filhas — cada subaba é um
@@ -20,10 +23,13 @@ export default function App() {
   return (
     <Routes>
       <Route path="matricula" element={<PreMatricula />} />
+      <Route path="matricula/:token" element={<LinkMatricula />} />
       <Route path="rematricula/:token?" element={<LinkRematricula />} />
+      <Route path="contrato/:token" element={<ContractSignature />} />
       <Route element={<AuthGate><Layout /></AuthGate>}>
         <Route index element={<Navigate to="/dashboard" replace />} />
         <Route path="dashboard" element={<Dashboard />} />
+        <Route path="links" element={<LinkGenerator />} />
 
         <Route path="familias" element={<Familias />} />
         <Route path="familias/:id" element={<FamilyDetail />}>
