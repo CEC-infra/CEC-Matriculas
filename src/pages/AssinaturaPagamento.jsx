@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { useNavigate, useOutletContext } from 'react-router-dom';
 import { Badge, CardHead } from '../components/ui';
 import DataState from '../components/DataState';
@@ -10,29 +10,38 @@ const closedStatuses = ['sem_interesse', 'opt_out', 'fora_campanha'];
 
 function ContractSetup({ enrollment, documents, installments }) {
   const plans = useAsyncData(() => getPaymentPlans(enrollment.campaign_id), [enrollment.campaign_id]);
-  const [email, setEmail] = useState('');
+  const [email, setEmail] = useState(enrollment.guardian_email || '');
   const [selectedPlan, setSelectedPlan] = useState(enrollment.payment_plan_id || '');
-  const [savedPlan, setSavedPlan] = useState(enrollment.payment_plan_id || '');
   const [contractLink, setContractLink] = useState('');
   const [message, setMessage] = useState('');
   const [savingPlan, setSavingPlan] = useState(false);
   const [starting, setStarting] = useState(false);
-  const planReady = true;
+
+  useEffect(() => {
+    setEmail(enrollment.guardian_email || '');
+    setSelectedPlan(enrollment.payment_plan_id || '');
+    setContractLink('');
+    setMessage('');
+  }, [enrollment.id, enrollment.guardian_email, enrollment.payment_plan_id]);
 
   async function savePlan() {
     if (!selectedPlan) { setMessage('Escolha uma condição de pagamento antes de continuar.'); return; }
     setSavingPlan(true); setMessage('');
     try {
       const result = await setEnrollmentPaymentPlan(enrollment.id, selectedPlan);
-      setSavedPlan(result.payment_plan_id);
       setMessage(`Condição salva: ${result.payment_plan_name}. Agora o contrato pode ser preparado.`);
     } catch (err) { setMessage(err.message || 'Não foi possível salvar a condição de pagamento.'); }
     finally { setSavingPlan(false); }
   }
   async function createContract() {
+    const confirmationEmail = (email || enrollment.guardian_email || '').trim();
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(confirmationEmail)) {
+      setMessage('Informe um e-mail válido para receber a confirmação da assinatura.');
+      return;
+    }
     setStarting(true); setMessage('');
     try {
-      const result = await startContract(enrollment.id, email || enrollment.guardian_email || null);
+      const result = await startContract(enrollment.id, confirmationEmail);
       const url = `${window.location.origin}/contrato/${result.token}`;
       setContractLink(url);
       setMessage('Contrato individual preparado. Copie o link para a família; o código será enviado quando ela iniciar a assinatura.');
@@ -40,7 +49,22 @@ function ContractSetup({ enrollment, documents, installments }) {
     finally { setStarting(false); }
   }
 
-  return <div className="grid grid--2" style={{ gap: 18, alignItems: 'start' }}><div className="stack"><div className="card"><div className="card-title">Preparar contrato individual</div><div className="card-sub" style={{ marginBottom: 16 }}>Cada aluno recebe e assina seu próprio contrato. A forma de pagamento pode ser definida depois da assinatura.</div><label>Condição de pagamento <span className="meta">(opcional nesta etapa)</span><select className="input" value={selectedPlan} onChange={(event) => setSelectedPlan(event.target.value)} disabled={plans.loading || Boolean(enrollment.completed_at)}><option value="">Definir depois</option>{plans.data?.map((plan) => <option key={plan.id} value={plan.id}>{plan.name} · {plan.description || `${plan.installments}x`}</option>)}</select></label><button type="button" className="btn" style={{ marginTop: 10 }} onClick={savePlan} disabled={savingPlan || !selectedPlan || Boolean(enrollment.completed_at)}>{savingPlan ? 'Salvando…' : 'Salvar condição opcional'}</button><label style={{ display: 'block', marginTop: 18 }}>E-mail para confirmação<input className="input" type="email" placeholder={enrollment.guardian_email || 'responsavel@email.com'} value={email} onChange={(event) => setEmail(event.target.value)} /></label><button type="button" className="btn btn--primary" style={{ marginTop: 14 }} onClick={createContract} disabled={starting || Boolean(enrollment.completed_at)}>{starting ? 'Preparando…' : 'Preparar link do contrato'}</button>{contractLink ? <div className="notice" style={{ marginTop: 14, alignItems: 'flex-start', flexDirection: 'column' }}><span>Link individual do contrato</span><code style={{ overflowWrap: 'anywhere' }}>{contractLink}</code><button type="button" className="btn" onClick={() => navigator.clipboard?.writeText(contractLink)}>Copiar link</button></div> : null}{message ? <div className="notice" style={{ marginTop: 14 }}><span>{message}</span></div> : null}</div><div className="card"><div className="card-title">Documentos da matrícula</div><div className="card-sub" style={{ marginBottom: 16 }}>Aceite e assinatura registrados para esta jornada.</div>{documents.length ? <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>{documents.map((item) => <div className="row-item" style={{ background: 'var(--surface)' }} key={item.id}><div className="who"><strong>{item.document_versions?.documents?.title || 'Documento'}</strong><span>{item.document_versions?.version || '—'} · {item.provider || 'sem provedor'}</span></div><Badge tone={statusTone(item.status)}>{item.status}</Badge></div>)}</div> : <div className="notice">Nenhum documento gerado ainda.</div>}</div></div><div className="card"><CardHead title="Parcelas geradas" right={<span className="meta">{enrollment.payment_plan_name || 'A definir após assinatura'}</span>} />{installments.length ? <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>{installments.map((item) => <div className="row-item" style={{ background: 'var(--surface)' }} key={item.id}><div className="who"><strong>Parcela {item.number}</strong><span>{money(item.amount_cents)} · vence em {dateTime(item.due_date)}</span></div><Badge tone={statusTone(item.status)}>{item.status}</Badge></div>)}</div> : <div className="notice">As parcelas serão criadas depois da assinatura e da escolha de pagamento.</div>}</div></div>;
+  return <div className="contract-setup-layout">
+    <div className="stack">
+      <section className="card contract-setup-card">
+        <div className="contract-setup-card__head"><div><div className="card-title">Preparar contrato individual</div><div className="card-sub">Revise a condição e o e-mail que receberá a confirmação de assinatura.</div></div><span className="badge badge--info">{enrollment.student_name}</span></div>
+        <div className="contract-setup-card__fields">
+          <div className="field"><label>Condição de pagamento <span className="contract-setup-card__optional">Opcional nesta etapa</span></label><select className="control" value={selectedPlan} onChange={(event) => setSelectedPlan(event.target.value)} disabled={plans.loading || Boolean(enrollment.completed_at)}><option value="">Definir depois</option>{plans.data?.map((plan) => <option key={plan.id} value={plan.id}>{plan.name} · {plan.description || `${plan.installments}x`}</option>)}</select><span className="contract-setup-card__hint">{selectedPlan ? 'A condição já selecionada pode ser alterada antes do contrato.' : 'A forma de pagamento poderá ser definida após a assinatura.'}</span><button type="button" className="btn contract-setup-card__secondary" onClick={savePlan} disabled={savingPlan || !selectedPlan || Boolean(enrollment.completed_at)}>{savingPlan ? 'Salvando…' : 'Salvar condição'}</button></div>
+          <div className="field"><label>E-mail para confirmação</label><input className="control" type="email" value={email} onChange={(event) => setEmail(event.target.value)} required /><span className="contract-setup-card__hint">O código de confirmação será enviado para este endereço quando o responsável iniciar a assinatura.</span></div>
+        </div>
+        <div className="contract-setup-card__action"><div><strong>Próxima etapa</strong><span>Gerar o link individual de contrato para {enrollment.student_name}.</span></div><button type="button" className="btn btn--primary" onClick={createContract} disabled={starting || Boolean(enrollment.completed_at)}>{starting ? 'Preparando…' : 'Preparar link do contrato'}</button></div>
+        {contractLink ? <div className="notice contract-setup-card__notice"><span>Link individual do contrato</span><code>{contractLink}</code><button type="button" className="btn" onClick={() => navigator.clipboard?.writeText(contractLink)}>Copiar link</button></div> : null}
+        {message ? <div className="notice contract-setup-card__notice"><span>{message}</span></div> : null}
+      </section>
+      <div className="card"><div className="card-title">Documentos da matrícula</div><div className="card-sub" style={{ marginBottom: 16 }}>Aceite e assinatura registrados para esta jornada.</div>{documents.length ? <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>{documents.map((item) => <div className="row-item" style={{ background: 'var(--surface)' }} key={item.id}><div className="who"><strong>{item.document_versions?.documents?.title || 'Documento'}</strong><span>{item.document_versions?.version || '—'} · {item.provider || 'sem provedor'}</span></div><Badge tone={statusTone(item.status)}>{item.status}</Badge></div>)}</div> : <div className="notice">Nenhum documento gerado ainda.</div>}</div>
+    </div>
+    <div className="stack"><div className="card"><CardHead title="Parcelas geradas" right={<span className="meta">{enrollment.payment_plan_name || 'A definir após assinatura'}</span>} />{installments.length ? <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>{installments.map((item) => <div className="row-item" style={{ background: 'var(--surface)' }} key={item.id}><div className="who"><strong>Parcela {item.number}</strong><span>{money(item.amount_cents)} · vence em {dateTime(item.due_date)}</span></div><Badge tone={statusTone(item.status)}>{item.status}</Badge></div>)}</div> : <div className="notice">As parcelas serão criadas depois da assinatura e da escolha de pagamento.</div>}</div></div>
+  </div>;
 }
 
 export default function AssinaturaPagamento() {

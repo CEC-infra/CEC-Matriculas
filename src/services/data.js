@@ -209,6 +209,10 @@ export function saveMatriculaLink(token, values) {
   });
 }
 
+export function completeMatriculaLink(token) {
+  return supabase.rpc('matricula_link_complete', { p_token: token });
+}
+
 export function startContract(enrollmentId, confirmationEmail) {
   return supabase.rpc('contract_create_session', {
     p_enrollment_id: enrollmentId,
