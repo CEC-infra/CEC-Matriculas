@@ -30,7 +30,7 @@ export default function PreMatricula() {
   return (
     <div className="grid" style={{ gridTemplateColumns: '1fr 360px', gap: 28, alignItems: 'start' }}>
       <div className="public">
-        <div className="public-head--navy"><div style={{ display: 'flex', alignItems: 'center', gap: 12 }}><LogoBlocks /><span className="public-kicker">Matrículas 2027</span></div><h2>Comece a matrícula do seu filho em dois minutos</h2><p>Preencha os dados básicos e nossa equipe continua o atendimento pelo WhatsApp, com valores e vagas disponíveis.</p></div>
+        <div className="public-head--navy"><div style={{ display: 'flex', alignItems: 'center', gap: 12 }}><LogoBlocks /><span className="public-kicker">Matrículas 2027</span></div><h2>Comece a matrícula do seu filho em dois minutos</h2><p>Preencha os dados básicos para iniciar a jornada de matrícula, com valores e vagas disponíveis.</p></div>
         <div className="public-body" style={{ padding: '30px 32px' }}>
           <DataState loading={loading} error={error} empty={!loading && !error && !data?.offerings?.length}>
             <form onSubmit={submit}>
@@ -43,12 +43,12 @@ export default function PreMatricula() {
               </div>
               <label className="consent"><input type="checkbox" checked={form.consent} onChange={(event) => update('consent')(event.target.checked)} /><span>Autorizo o CEC a entrar em contato pelo WhatsApp sobre a matrícula.</span></label>
               {message ? <div className="notice" style={{ marginTop: 16 }}>{message}</div> : null}
-              <div className="public-foot"><span>Sem compromisso. Você pode encerrar o contato a qualquer momento.</span><button type="submit" className="cta" disabled={sending}>{sending ? 'Enviando…' : 'Quero atendimento →'}</button></div>
+              <div className="public-foot"><span>Sem compromisso. Você pode encerrar o cadastro a qualquer momento.</span><button type="submit" className="cta" disabled={sending}>{sending ? 'Enviando…' : 'Continuar matrícula →'}</button></div>
             </form>
           </DataState>
         </div>
       </div>
-      <div className="stack" style={{ gap: 16 }}><div className="card"><div className="card-title" style={{ marginBottom: 14 }}>O que acontece depois</div><div className="bullet-list">{['Atendimento pelo WhatsApp no mesmo dia', 'Valores e vagas atualizados', 'Visita agendada pela própria conversa', 'Matrícula concluída online, com assinatura digital'].map((item) => <div className="bullet" key={item}><i /><span>{item}</span></div>)}</div></div><div className="card card--navy"><div className="card-title" style={{ marginBottom: 10 }}>Dados protegidos</div><p style={{ fontSize: 13, color: 'var(--navy-soft)', lineHeight: 1.6 }}>Seu envio é registrado diretamente na campanha e tratado pela equipe da escola.</p></div></div>
+      <div className="stack" style={{ gap: 16 }}><div className="card"><div className="card-title" style={{ marginBottom: 14 }}>O que acontece depois</div><div className="bullet-list">{['Cadastro registrado na campanha', 'Valores e vagas atualizados', 'Visita agendada conforme disponibilidade', 'Matrícula concluída online, com assinatura digital'].map((item) => <div className="bullet" key={item}><i /><span>{item}</span></div>)}</div></div><div className="card card--navy"><div className="card-title" style={{ marginBottom: 10 }}>Dados protegidos</div><p style={{ fontSize: 13, color: 'var(--navy-soft)', lineHeight: 1.6 }}>Seu envio é registrado diretamente na campanha e tratado pela equipe da escola.</p></div></div>
     </div>
   );
 }

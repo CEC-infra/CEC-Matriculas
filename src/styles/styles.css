@@ -356,6 +356,7 @@ a:hover { color: var(--navy); }
 .cols-novas      { grid-template-columns: 1.3fr 1.2fr 1.15fr 0.85fr 0.8fr 80px; }
 .cols-matric     { grid-template-columns: 1.25fr 1.2fr 1fr 0.95fr 1fr 0.8fr; }
 .cols-series     { grid-template-columns: 1.1fr 1.1fr 0.9fr 0.9fr 0.8fr; }
+.cols-pricing    { grid-template-columns: 1.15fr 1fr 1fr 1fr; }
 
 /* --- 13. Subabas da família ---------------------------------------------- */
 .subnav { display: flex; flex-direction: column; margin-bottom: -8px; }
@@ -403,46 +404,10 @@ a:hover { color: var(--navy); }
 .timeline-code { font-size: 10.5px; color: var(--ink-mute); background: var(--surface-3); border-radius: 5px; padding: 2px 6px; }
 .timeline-body p { font-size: 12.5px; color: var(--ink-mute); line-height: 1.55; max-width: 600px; }
 
-/* --- 15. Atendimento ----------------------------------------------------- */
-.chat { display: grid; grid-template-columns: 300px 1fr 300px; background: var(--surface); border: 1px solid var(--line); border-radius: var(--r-2xl); overflow: hidden; min-height: 640px; }
-.chat-list { border-right: 1px solid var(--line-3); display: flex; flex-direction: column; }
-.chat-list-head { padding: 15px 18px; border-bottom: 1px solid var(--line-3); display: flex; align-items: center; justify-content: space-between; }
-.convo { display: flex; flex-direction: column; gap: 5px; padding: 14px 18px; border-bottom: 1px solid var(--surface-3); cursor: pointer; border-left: 3px solid transparent; }
-.convo:hover { background: var(--surface-2); }
-.convo.is-active { background: #FFF4E9; border-left-color: var(--orange-deep); }
-.convo-top { display: flex; align-items: baseline; justify-content: space-between; gap: 10px; }
-.convo-top strong { font-size: 13.5px; }
-.convo-top span { font-size: 10.5px; color: #7A756B; }
-.convo-last { font-size: 12px; color: var(--ink-mute); line-height: 1.45; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.convo-tag { font-size: 10.5px; font-weight: 700; letter-spacing: 0.4px; text-transform: uppercase; }
-
-.chat-main { display: flex; flex-direction: column; min-width: 0; }
-.chat-head { padding: 15px 22px; border-bottom: 1px solid var(--line-3); display: flex; align-items: center; justify-content: space-between; gap: 14px; flex-wrap: wrap; }
-.chat-thread { flex: 1; padding: 22px; display: flex; flex-direction: column; gap: 16px; background: #FCFBF9; }
-.msg { display: flex; flex-direction: column; gap: 4px; }
-.msg--in { align-items: flex-start; }
-.msg--out { align-items: flex-end; }
-.bubble { max-width: 74%; padding: 12px 15px; font-size: 13.5px; line-height: 1.55; }
-.msg--in  .bubble { background: var(--surface-3); border-radius: var(--r-2xl) var(--r-lg) var(--r-lg) 4px; }
-.msg--out .bubble { background: var(--navy); color: #fff; border-radius: var(--r-2xl) var(--r-lg) 4px var(--r-lg); }
-.msg small { font-size: 10.5px; color: #7A756B; }
-.chat-compose { padding: 15px 22px; border-top: 1px solid var(--line-3); display: flex; align-items: center; gap: 11px; }
-.chat-compose .control { flex: 1; border: 1px solid var(--line); border-radius: var(--r-md); padding: 12px 14px; font-size: 13px; color: var(--ink-faint); background: var(--surface-2); }
-.chat-aside { border-left: 1px solid var(--line-3); padding: 20px 22px; }
-
 .avatar { width: 34px; height: 34px; border-radius: var(--r-md); background: #FFEEDF; color: var(--orange-ink); display: flex; align-items: center; justify-content: center; font-size: 12.5px; font-weight: 700; }
 .avatar--lg { width: 46px; height: 46px; font-size: 15px; }
 
-/* --- 16. Gráfico de barras ---------------------------------------------- */
-.bars { display: flex; align-items: flex-end; gap: 8px; height: 130px; }
-.bar-col { flex: 1; display: flex; flex-direction: column; align-items: center; gap: 7px; height: 100%; justify-content: flex-end; }
-.bar-col strong { font-size: 11.5px; }
-.bar-col small { font-size: 10.5px; color: var(--ink-mute); }
-.bar-plot { flex: 1; min-height: 0; width: 100%; display: flex; align-items: flex-end; }
-.bar-plot > i { display: block; width: 100%; border-radius: 6px 6px 0 0; background: var(--navy-600); }
-.bar-col.is-current .bar-plot > i { background: var(--amber); }
-
-/* --- 17. Links da campanha ---------------------------------------------- */
+/* --- 16. Links da campanha ---------------------------------------------- */
 .link-card { border: 1px solid var(--line-2); background: var(--surface-2); border-radius: var(--r-lg); padding: 16px 17px; display: flex; flex-direction: column; gap: 11px; }
 .link-card-top { display: flex; align-items: center; gap: 9px; }
 .link-card-top strong { font-size: 14px; }
@@ -511,11 +476,24 @@ a:hover { color: var(--navy); }
 .onboarding-body { padding: 22px 18px 26px; gap: 20px; }
 .onboarding-form { display: flex; flex-direction: column; gap: 20px; }
 .onboarding-choice { width: min(100%, 520px); margin: 42px auto; padding: 28px 22px; border: 1px solid var(--line); border-radius: var(--r-2xl); background: var(--surface); box-shadow: 0 18px 44px rgb(18 42 76 / .12); display: flex; flex-direction: column; align-items: flex-start; gap: 15px; }
+.onboarding-choice-logo { display: block; width: 104px; height: auto; }
 .onboarding-choice > span { font-size: 12px; font-weight: 800; color: var(--orange-ink); letter-spacing: .8px; }
 .onboarding-choice h1 { font-family: var(--font-display); font-size: 30px; color: var(--navy); }
 .onboarding-choice p, .onboarding-child-editor p { margin: 0; color: var(--ink-mute); font-size: 13px; line-height: 1.55; }
 .onboarding-choice-actions { width: 100%; display: flex; flex-direction: column; gap: 10px; margin-top: 6px; }
-.onboarding-choice-actions > * { text-align: center; }
+.onboarding-choice-actions > * { width: 100%; min-height: 50px; padding: 12px 20px; border-radius: 14px; text-align: center; font-size: 14px; }
+.onboarding-existing-family-modal { position: fixed; inset: 0; z-index: 50; display: grid; place-items: center; padding: 18px; }
+.onboarding-existing-family-modal__backdrop { position: absolute; inset: 0; background: rgb(18 35 76 / .48); backdrop-filter: blur(3px); }
+.onboarding-existing-family { position: relative; z-index: 1; width: min(100%, 560px); display: flex; flex-direction: column; gap: 10px; padding: 22px; border: 1px solid #A9D8B5; border-radius: var(--r-xl); background: #F1FAF3; box-shadow: 0 24px 60px rgb(18 35 76 / .25); }
+.onboarding-existing-family__eyebrow { color: #17713A; font-size: 10.5px; font-weight: 800; letter-spacing: .75px; text-transform: uppercase; }
+.onboarding-existing-family h3 { color: var(--navy); font-size: 18px; }
+.onboarding-existing-family p { margin: 0; color: var(--ink-mute); font-size: 12.5px; line-height: 1.5; }
+.onboarding-existing-family__children { display: flex; flex-direction: column; gap: 8px; padding: 12px; border: 1px solid #CBE7D1; border-radius: 12px; background: #fff; }
+.onboarding-existing-family__children > strong { color: var(--navy); font-size: 12px; }
+.onboarding-existing-family__children > div { display: flex; align-items: center; justify-content: space-between; gap: 12px; color: var(--navy); font-size: 13px; font-weight: 700; }
+.onboarding-existing-family__children small { color: var(--ink-mute); font-size: 11.5px; font-weight: 500; text-align: right; }
+.onboarding-existing-family__question { color: var(--navy) !important; font-weight: 700; }
+.onboarding-existing-family__actions { display: flex; flex-wrap: wrap; gap: 10px; padding-top: 2px; }
 .text-link { border: 0; padding: 0; background: transparent; color: var(--orange-ink); cursor: pointer; font: inherit; font-size: 13px; font-weight: 700; text-decoration: underline; }
 .onboarding-guardian { border-left: 3px solid var(--orange-deep); padding: 4px 0 4px 12px; display: flex; flex-direction: column; gap: 3px; }
 .onboarding-guardian strong { font-size: 15px; color: var(--navy); }
@@ -565,6 +543,23 @@ a:hover { color: var(--navy); }
 .contract-setup-card__action span { color: var(--ink-mute); font-size: 12px; }
 .contract-setup-card__notice { margin: 0; align-items: flex-start; flex-direction: column; }
 .contract-setup-card__notice code { overflow-wrap: anywhere; font-size: 11px; color: var(--navy); }
+.contract-data-modal { position: fixed; inset: 0; z-index: 40; display: grid; place-items: center; padding: 18px; }
+.contract-data-modal__backdrop { position: absolute; inset: 0; background: rgba(18, 35, 76, .52); backdrop-filter: blur(3px); }
+.contract-data-modal__card { position: relative; z-index: 1; width: min(100%, 760px); max-height: min(88vh, 760px); overflow: auto; border: 1px solid var(--line); border-radius: var(--r-2xl); background: var(--surface); box-shadow: 0 28px 70px rgba(18, 35, 76, .28); }
+.contract-data-modal__head { padding: 24px 24px 20px; display: flex; align-items: flex-start; justify-content: space-between; gap: 14px; border-bottom: 1px solid var(--line-3); }
+.contract-data-modal__head > div { display: flex; flex-direction: column; gap: 6px; }
+.contract-data-modal__head > div > span { color: var(--orange-ink); font-size: 10.5px; font-weight: 800; letter-spacing: .8px; text-transform: uppercase; }
+.contract-data-modal__head h2 { font-size: 23px; color: var(--navy); }
+.contract-data-modal__head p, .contract-data-modal__section p { color: var(--ink-mute); font-size: 12.5px; line-height: 1.55; }
+.contract-data-modal__body { display: flex; flex-direction: column; gap: 16px; padding: 20px 24px; }
+.contract-data-modal__section { border: 1px solid var(--line-2); background: var(--surface-2); border-radius: var(--r-lg); padding: 16px; }
+.contract-data-modal__section h3 { font-size: 16px; color: var(--navy); margin: 0 0 4px; }
+.contract-data-modal__grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 13px; margin-top: 13px; }
+.contract-data-modal__grid label { display: flex; flex-direction: column; gap: 6px; color: var(--ink-mute); font-size: 10.5px; font-weight: 800; letter-spacing: .55px; text-transform: uppercase; }
+.contract-data-modal__grid .control { width: 100%; text-transform: none; letter-spacing: 0; font-weight: 600; }
+.contract-data-modal__full { grid-column: 1 / -1; }
+.contract-data-modal__actions { display: flex; align-items: center; justify-content: space-between; gap: 14px; padding: 16px 24px 22px; border-top: 1px solid var(--line-3); }
+.contract-data-modal__actions span { color: var(--ink-mute); font-size: 12px; line-height: 1.45; max-width: 420px; }
 @media (min-width: 620px) { .contract-setup-card__fields { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); } }
 @media (min-width: 700px) {
   .onboarding-page { padding: 48px 28px 72px; }
@@ -604,14 +599,12 @@ a:hover { color: var(--navy); }
   .grid--kpi { grid-template-columns: repeat(3, minmax(0, 1fr)); }
   .grid--4, .grid--3 { grid-template-columns: repeat(2, minmax(0, 1fr)); }
   .grid--main, .grid--split, .grid--wide { grid-template-columns: 1fr; }
-  .chat { grid-template-columns: 1fr; min-height: auto; }
-  .chat-aside { border-left: none; border-top: 1px solid var(--line-3); }
   .funnel-row { grid-template-columns: 1fr auto; gap: 6px 14px; }
   .funnel-bar { grid-column: 1 / -1; order: 3; height: 20px; }
   .funnel-num { order: 2; }
   .table-head { display: none; }
   .table-row { grid-template-columns: 16px 1.4fr 1.2fr !important; gap: 10px 12px; padding: 14px 16px; }
-  .cols-novas.table-row, .cols-matric.table-row, .cols-series.table-row { grid-template-columns: 1.4fr 1fr !important; }
+  .cols-novas.table-row, .cols-matric.table-row, .cols-series.table-row, .cols-pricing.table-row { grid-template-columns: 1.4fr 1fr !important; }
   .is-secondary { display: none; }
   .phone { width: 100%; max-width: 330px; }
 }
@@ -643,6 +636,14 @@ a:hover { color: var(--navy); }
   .contract-setup-card__action .btn { width: 100%; }
   .contract-confirmation { padding: 16px; }
   .contract-pdf, .contract-pdf-unavailable { min-height: 310px; }
+  .contract-data-modal { padding: 10px; }
+  .contract-data-modal__head, .contract-data-modal__actions { padding-left: 18px; padding-right: 18px; }
+  .contract-data-modal__head { flex-direction: column; }
+  .contract-data-modal__body { padding: 16px 18px; }
+  .contract-data-modal__grid { grid-template-columns: 1fr; }
+  .contract-data-modal__full { grid-column: auto; }
+  .contract-data-modal__actions { align-items: stretch; flex-direction: column; }
+  .contract-data-modal__actions .btn { width: 100%; }
 }
 
 /* --- 21. Ajustes do roteador -------------------------------------------- */

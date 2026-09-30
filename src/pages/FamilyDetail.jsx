@@ -9,7 +9,7 @@ export default function FamilyDetail() {
   const { id } = useParams();
   const { loading, data, error } = useAsyncData(() => getEnrollmentDetail(id), [id]);
   const setFamilyHeader = useContext(FamilyHeaderContext);
-  const tabs = [{ to: `/familias/${id}`, label: 'Detalhe da família', end: true }, { to: `/familias/${id}/atendimento`, label: 'Atendimento' }, { to: `/familias/${id}/assinatura`, label: 'Assinatura e pagamento' }];
+  const tabs = [{ to: `/familias/${id}`, label: 'Detalhe da família', end: true }, { to: `/familias/${id}/assinatura`, label: 'Assinatura e pagamento' }];
 
   useEffect(() => {
     if (!data?.enrollment) return undefined;

@@ -47,7 +47,7 @@ async function request(path, { method = 'GET', body, headers = {} } = {}) {
     body: body ? JSON.stringify(body) : undefined
   });
   const payload = response.status === 204 ? null : await response.json().catch(() => null);
-  if (!response.ok) throw new Error(payload?.message || payload?.error_description || 'Não foi possível consultar o Supabase.');
+  if (!response.ok) throw new Error(payload?.message || payload?.error || payload?.error_description || 'Não foi possível consultar o Supabase.');
   return payload;
 }
 
@@ -75,6 +75,9 @@ export const supabase = {
   },
   rpc(name, args) {
     return request(`rest/v1/rpc/${name}`, { method: 'POST', body: args });
+  },
+  invokeFunction(name, body) {
+    return request(`functions/v1/${name}`, { method: 'POST', body });
   },
   insert(resource, values) {
     return request(`rest/v1/${resource}`, {

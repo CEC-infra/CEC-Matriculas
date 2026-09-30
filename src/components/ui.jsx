@@ -38,7 +38,7 @@ export function CardHead({ title, sub, right }) {
   );
 }
 
-export function Field({ label, value, ph, onChange, type = 'text', options = [], required = false, disabled = false }) {
+export function Field({ label, value, ph, onChange, type = 'text', options = [], required = false, disabled = false, inputMode, maxLength }) {
   const filled = value != null;
   return (
     <div className="field">
@@ -49,7 +49,7 @@ export function Field({ label, value, ph, onChange, type = 'text', options = [],
             <option value="">{ph || 'Selecionar'}</option>
             {options.map((option) => <option key={option.value} value={option.value}>{option.label}</option>)}
           </select>
-        ) : <input className="control" value={value || ''} placeholder={ph} onChange={(event) => onChange(event.target.value)} type={type} required={required} disabled={disabled} />
+        ) : <input className="control" value={value || ''} placeholder={ph} onChange={(event) => onChange(event.target.value)} type={type} required={required} disabled={disabled} inputMode={inputMode} maxLength={maxLength} />
       ) : <div className={`control${filled ? '' : ' is-placeholder'}`}>{filled ? value : ph}</div>}
     </div>
   );

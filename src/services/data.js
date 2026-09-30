@@ -44,43 +44,12 @@ export async function getEnrollments({ kind } = {}) {
 export async function getEnrollmentDetail(id) {
   const enrollment = first(await supabase.select('v_enrollment_list', q({ select: '*', id: eq(id) })));
   if (!enrollment) return null;
-  const [events, installments, documents, conversations] = await Promise.all([
+  const [events, installments, documents] = await Promise.all([
     supabase.select('enrollment_events', q({ select: '*', enrollment_id: eq(id), order: 'created_at.desc' })),
     supabase.select('installments', q({ select: '*', enrollment_id: eq(id), order: 'number.asc' })),
-    supabase.select('document_acceptances', q({ select: '*,document_versions(version,pages,documents(title))', enrollment_id: eq(id), order: 'created_at.asc' })),
-    supabase.select('conversations', q({ select: '*', enrollment_id: eq(id), limit: '1' }))
+    supabase.select('document_acceptances', q({ select: '*,document_versions(version,pages,documents(title))', enrollment_id: eq(id), order: 'created_at.asc' }))
   ]);
-  const conversation = first(conversations);
-  const messages = conversation
-    ? await supabase.select('messages', q({ select: '*', conversation_id: eq(conversation.id), order: 'created_at.asc' }))
-    : [];
-  return { enrollment, events, installments, documents, conversation, messages };
-}
-
-export async function getAutomation() {
-  const campaign = await getActiveCampaign('rematricula');
-  if (!campaign) return { campaign: null, stats: null, queue: [], throughput: [], attended: [] };
-  const filter = q({ select: '*', campaign_id: eq(campaign.id) });
-  const [stats, queue, throughput, attended] = await Promise.all([
-    supabase.select('v_queue_stats', filter),
-    supabase.select('v_queue_upcoming', q({ select: '*', campaign_id: eq(campaign.id), order: 'scheduled_for.asc', limit: '20' })),
-    supabase.select('v_hourly_throughput', q({ select: '*', campaign_id: eq(campaign.id), order: 'hora.asc' })),
-    supabase.select('v_enrollment_list', q({ select: '*', campaign_id: eq(campaign.id), order: 'updated_at.desc', limit: '12' }))
-  ]);
-  return { campaign, stats: first(stats), queue, throughput, attended };
-}
-
-export function getConversations() {
-  return supabase.select('v_conversation_list', q({ select: '*', order: 'last_message_at.desc' }));
-}
-
-export function getConversationMessages(conversationId) {
-  if (!conversationId) return Promise.resolve([]);
-  return supabase.select('messages', q({ select: '*', conversation_id: eq(conversationId), order: 'created_at.asc' }));
-}
-
-export function setConversationHandler(conversationId, handler) {
-  return supabase.update('conversations', `id=eq.${conversationId}`, { handler });
+  return { enrollment, events, installments, documents };
 }
 
 export async function getSettings() {
@@ -96,9 +65,10 @@ export async function getSettings() {
 }
 
 export async function getPublicOfferings() {
-  const offerings = await supabase.select('grade_offerings', q({
-    select: 'id,grade_id,amount_cents,cash_amount_cents,seats_total,grades(name,sort_order)',
-    order: 'grades(sort_order).asc'
+  const rows = await supabase.rpc('public_grade_offerings');
+  const offerings = (rows || []).map(({ grade_name, sort_order, ...item }) => ({
+    ...item,
+    grades: { name: grade_name, sort_order }
   }));
   return { offerings };
 }
@@ -146,6 +116,22 @@ export function createMatriculaOnboarding(token, values) {
     p_email: values.email,
     p_address: values.address,
     p_children: values.children
+  });
+}
+
+export function lookupExistingFamilyForNewEnrollment(token, values) {
+  return supabase.rpc('onboarding_lookup_existing_family', {
+    p_token: token,
+    p_cpf: values.cpf,
+    p_phone: values.phone
+  });
+}
+
+export function startRematriculaFromNewEnrollment(token, values) {
+  return supabase.rpc('onboarding_start_rematricula_from_new_enrollment', {
+    p_token: token,
+    p_cpf: values.cpf,
+    p_phone: values.phone
   });
 }
 
@@ -224,8 +210,46 @@ export function openContract(token) {
   return supabase.rpc('contract_open', { p_token: token });
 }
 
-export function sendContractCode(token) {
-  return supabase.rpc('contract_send_email_code', { p_token: token });
+export function completeContractRequiredData(token, guardian, students) {
+  return supabase.rpc('contract_complete_required_data', {
+    p_token: token,
+    p_guardian: guardian,
+    p_students: students
+  });
+}
+
+function bytesToBase64(buffer) {
+  const bytes = new Uint8Array(buffer);
+  const chunkSize = 0x8000;
+  let binary = '';
+  for (let index = 0; index < bytes.length; index += chunkSize) {
+    binary += String.fromCharCode(...bytes.subarray(index, index + chunkSize));
+  }
+  return btoa(binary);
+}
+
+export async function generateContractPdf(token) {
+  const response = await fetch('/contracts/contrato-matricula-cec-2025.pdf');
+  if (!response.ok) throw new Error('Não foi possível carregar o modelo final do contrato.');
+  return supabase.invokeFunction('generate-contract', {
+    token,
+    template_base64: bytesToBase64(await response.arrayBuffer())
+  });
+}
+
+export function contractPdfUrl(token, enrollmentId) {
+  const url = import.meta.env.VITE_SUPABASE_URL;
+  if (!url) return '';
+  return `${url}/functions/v1/generate-contract?token=${encodeURIComponent(token)}&enrollment_id=${encodeURIComponent(enrollmentId)}`;
+}
+
+export async function sendContractCode(token) {
+  await supabase.rpc('contract_send_email_code', { p_token: token });
+  return supabase.invokeFunction('dispatch-contract-emails', { token });
+}
+
+export function dispatchPendingContractEmail(token) {
+  return supabase.invokeFunction('dispatch-contract-emails', { token });
 }
 
 export function verifyContractCode(token, code) {
@@ -233,11 +257,12 @@ export function verifyContractCode(token, code) {
 }
 
 export function signContract(token, values) {
-  return supabase.rpc('contract_sign', {
-    p_token: token,
-    p_signer_full_name: values.signerName,
-    p_signature_image_data: values.signatureImage,
-    p_accepted: values.accepted
+  return supabase.invokeFunction('generate-contract', {
+    action: 'sign',
+    token,
+    signer_name: values.signerName,
+    signature_image_data: values.signatureImage,
+    accepted: values.accepted
   });
 }
 
@@ -269,8 +294,4 @@ export async function createStaffEnrollment(values) {
     p_relationship: values.relationship || null,
     p_guardian_notes: values.notes || null
   });
-}
-
-export function setQueuePaused(campaignId, paused) {
-  return supabase.update('campaigns', `id=eq.${campaignId}`, { queue_paused: paused });
 }

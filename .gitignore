@@ -22,3 +22,6 @@ service-account*.json
 
 # Arquivos de origem para importação (podem conter dados pessoais)
 importacao/
+
+# Artefatos temporários de revisão e conversão local
+tmp/

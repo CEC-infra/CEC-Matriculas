@@ -4,7 +4,7 @@ import { Badge, Chips, Field, KpiRow } from '../components/ui';
 import DataState from '../components/DataState';
 import { useAsyncData } from '../hooks/useAsyncData';
 import { createStaffEnrollment, getEnrollments, getPublicOfferings } from '../services/data';
-import { dateTime, money, statusTone } from '../lib/format';
+import { dateTime, formatCpf, money, statusTone } from '../lib/format';
 
 const emptyForm = {
   guardianCpf: '', guardianName: '', phone: '', email: '', address: '',
@@ -31,7 +31,7 @@ function FamilyModal({ form, onChange, onClear, onClose, onSubmit, saving, messa
       <div className="modal-head"><div><h2 id="family-modal-title">Cadastrar família</h2><p>Os campos obrigatórios são necessários para iniciar a matrícula.</p></div><button className="modal-close" type="button" aria-label="Fechar" onClick={onClose} disabled={saving}>×</button></div>
       <form onSubmit={onSubmit} className="modal-form">
         <div className="modal-section"><h3>Responsável</h3><div className="grid grid--2">
-          <div><Field label="CPF do responsável" ph="000.000.000-00" value={form.guardianCpf} onChange={update('guardianCpf')} required />{cpfInvalid ? <small className="field-error">CPF inválido. Confira os dígitos.</small> : null}</div>
+          <div><Field label="CPF do responsável" ph="000.000.000-00" value={form.guardianCpf} onChange={(value) => update('guardianCpf')(formatCpf(value))} inputMode="numeric" maxLength={14} required />{cpfInvalid ? <small className="field-error">CPF inválido. Confira os dígitos.</small> : null}</div>
           <Field label="Nome completo do responsável" ph="Nome completo" value={form.guardianName} onChange={update('guardianName')} required />
           <Field label="WhatsApp do responsável" ph="(83) 9 0000-0000" value={form.phone} onChange={update('phone')} required />
           <Field label="E-mail do responsável" ph="nome@email.com" value={form.email} onChange={update('email')} type="email" required />
@@ -50,7 +50,7 @@ function FamilyModal({ form, onChange, onClear, onClose, onSubmit, saving, messa
         </div></details>
         {message ? <div className="notice">{message}</div> : null}
         {createdLink ? <div className="notice" style={{ marginTop: 14, alignItems: 'flex-start', flexDirection: 'column' }}><span>Link individual criado para esta matrícula:</span><code style={{ overflowWrap: 'anywhere' }}>{createdLink}</code><div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}><button type="button" className="btn" onClick={() => navigator.clipboard?.writeText(createdLink)}>Copiar link</button><button type="button" className="btn btn--primary" onClick={onOpenFamily}>Abrir família</button></div></div> : null}
-        <div className="modal-actions">{createdLink ? <button type="button" className="btn" onClick={onClear}>Cadastrar outra família</button> : <><button type="button" className="btn" onClick={onClear} disabled={saving}>Limpar dados</button><button type="button" className="btn" onClick={onClose} disabled={saving}>Cancelar</button><button type="submit" className="btn btn--primary" disabled={saving}>{saving ? 'Cadastrando…' : 'Cadastrar e iniciar atendimento'}</button></>}</div>
+        <div className="modal-actions">{createdLink ? <button type="button" className="btn" onClick={onClear}>Cadastrar outra família</button> : <><button type="button" className="btn" onClick={onClear} disabled={saving}>Limpar dados</button><button type="button" className="btn" onClick={onClose} disabled={saving}>Cancelar</button><button type="submit" className="btn btn--primary" disabled={saving}>{saving ? 'Cadastrando…' : 'Cadastrar família'}</button></>}</div>
       </form>
     </section>
   </div>;
@@ -68,7 +68,7 @@ export default function MatriculasNovas() {
   const offerings = useAsyncData(getPublicOfferings, []);
   const rows = (enrollments.data || []).filter((item) => filter === 'Todas' || item.status_label === filter);
   const gradeOptions = (offerings.data?.offerings || []).map((item) => ({ value: item.grade_id, label: `${item.grades?.name} · ${money(item.amount_cents)}` }));
-  const stats = [{ label: 'Pré-matrículas', value: (enrollments.data || []).filter((item) => item.status === 'pre_matricula').length, sub: 'formulário público' }, { label: 'Em atendimento', value: (enrollments.data || []).filter((item) => !item.completed_at && item.status !== 'pre_matricula').length, sub: 'jornadas ativas' }, { label: 'Matrículas efetivadas', value: (enrollments.data || []).filter((item) => item.completed_at).length, sub: 'concluídas' }, { label: 'Total da campanha', value: enrollments.data?.length || 0, sub: 'dados reais' }];
+  const stats = [{ label: 'Pré-matrículas', value: (enrollments.data || []).filter((item) => item.status === 'pre_matricula').length, sub: 'formulário público' }, { label: 'Jornadas em andamento', value: (enrollments.data || []).filter((item) => !item.completed_at && item.status !== 'pre_matricula').length, sub: 'cadastros ativos' }, { label: 'Matrículas efetivadas', value: (enrollments.data || []).filter((item) => item.completed_at).length, sub: 'concluídas' }, { label: 'Total da campanha', value: enrollments.data?.length || 0, sub: 'dados reais' }];
   function openModal() { setMessage(''); setCreated(null); setShowModal(true); }
   function closeModal() { if (!saving) { setShowModal(false); setMessage(''); setCreated(null); } }
   function clearModal() { if (!saving) { setForm(emptyForm); setMessage(''); setCreated(null); } }

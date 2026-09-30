@@ -1,18 +1,41 @@
 import { useEffect, useState } from 'react';
 import { NavLink, Outlet, matchPath, useLocation } from 'react-router-dom';
-import { DATA, findFamily } from '../data/content';
 import { FamilyHeaderContext } from '../contexts/FamilyHeaderContext';
 import Icon from './Icon';
 import cecLogo from '../assets/cec-logo.png';
+
+const navigation = [
+  { path: '/dashboard', label: 'Dashboard', icon: 'dashboard', dot: '#E4581C' },
+  { path: '/familias', label: 'Famílias', icon: 'families', dot: '#3AA757' },
+  { path: '/matriculas-novas', label: 'Matrículas novas', icon: 'newEnroll', dot: '#C77DFF' },
+  { path: '/matriculados', label: 'Matriculados', icon: 'enrolled', dot: '#3AA757' },
+  { path: '/assinatura-e-pagamento', label: 'Assinatura e pagamento', icon: 'signature', dot: '#3AA757' },
+  { path: '/configuracoes', label: 'Configurações', icon: 'settings', dot: '#A8B8E0' }
+];
+
+const heads = {
+  '/dashboard': ['Campanha 2027', 'Visão geral da operação'],
+  '/familias': ['CRM operacional', 'Famílias na campanha'],
+  '/matriculas-novas': ['Entrada de novas famílias', 'Matrículas novas'],
+  '/matriculados': ['Resultado da campanha', 'Matriculados'],
+  '/assinatura-e-pagamento': ['Conclusão da jornada', 'Assinatura digital e pagamento'],
+  '/configuracoes': ['Cadastros da campanha', 'Configurações'],
+  '/rematricula': ['Jornada online do responsável', 'Página individual de rematrícula'],
+  '/matricula': ['Novas matrículas', 'Link público de pré-matrícula'],
+  '/links': ['Links das famílias', 'Consultar e copiar links cadastrados']
+};
+
+const headerLinks = [
+  { path: '/links', label: 'Links individuais', url: 'ver e gerenciar', icon: 'link', dot: '#F07E26' }
+];
 
 /** Migalha e título do header, derivados da rota atual. */
 function headFor(pathname) {
   const fam = matchPath('/familias/:id/*', pathname) || matchPath('/familias/:id', pathname);
   if (fam) {
-    const f = findFamily(fam.params.id);
-    return [`Famílias / ${f.parent}`, `${f.parent} · ${f.student}, ${f.klass}`];
+    return ['Famílias', 'Detalhe da família'];
   }
-  return DATA.heads[pathname] || ['', ''];
+  return heads[pathname] || ['', ''];
 }
 
 function Sidebar() {
@@ -24,7 +47,7 @@ function Sidebar() {
 
       <nav className="nav">
         <div className="nav-label">Operação</div>
-        {DATA.nav.map((item) => (
+        {navigation.map((item) => (
           <NavLink
             key={item.path}
             to={item.path}
@@ -55,7 +78,7 @@ function Topbar({ crumb, title }) {
         <h1>{title}</h1>
       </div>
       <div className="topbar-links">
-        {DATA.headerLinks.map((l) => (
+        {headerLinks.map((l) => (
           <NavLink
             key={l.path}
             to={l.path}
