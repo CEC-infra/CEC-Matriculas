@@ -117,3 +117,8 @@ end $$;
 
 revoke all on function public.onboarding_remove_added_child(text, uuid) from public;
 grant execute on function public.onboarding_remove_added_child(text, uuid) to anon, authenticated;
+
+-- Uma cobrança do Asaas por vencimento cobre a parcela de todos os irmãos:
+-- várias parcelas passam a apontar para o mesmo provider_charge_id.
+drop index if exists public.installments_provider_ref;
+create index if not exists installments_provider_charge_idx on public.installments (provider, provider_charge_id) where provider_charge_id is not null;
