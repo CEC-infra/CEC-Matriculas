@@ -28,7 +28,7 @@ async function sha256(bytes: Uint8Array) {
 }
 
 function shiftLabel(shift: string | null) {
-  return ({ manha: "Manhã", tarde: "Tarde", integral: "Integral" } as Record<string, string>)[shift || ""] || "";
+  return ({ manha: "Matutino", tarde: "Vespertino", integral: "Integral" } as Record<string, string>)[shift || ""] || "";
 }
 
 function drawField(page: ReturnType<PDFDocument["getPages"]>[number], font: Awaited<ReturnType<PDFDocument["embedFont"]>>, value: string, x: number, y: number, maxWidth: number) {
@@ -172,7 +172,10 @@ async function generate(supabase: ReturnType<typeof createClient>, token: string
     drawField(page, font, shiftLabel(enrollment.target_shift), 255, 602, 120);
     const output = await pdf.save();
     const outputHash = await sha256(output);
-    const { error: uploadError } = await supabase.storage.from("contract-files").upload(path, output, { contentType: "application/pdf", upsert: false });
+    // A correção dos dados invalida o rascunho antes da assinatura. O mesmo
+    // caminho é sobrescrito com o PDF novo; cópias já assinadas nunca chegam
+    // aqui porque a sessão é bloqueada pelo banco.
+    const { error: uploadError } = await supabase.storage.from("contract-files").upload(path, output, { contentType: "application/pdf", upsert: true });
     if (uploadError) throw uploadError;
     const generationData = {
       template_version: versionResult.data.version,

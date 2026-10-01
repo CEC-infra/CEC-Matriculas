@@ -24,9 +24,9 @@
 ## 4. Pré-requisitos para uso em produção
 
 1. Criar os usuários da secretaria no Supabase Auth e ativar seus perfis em `public.profiles`.
-2. Importar a base de responsáveis, alunos, turmas e matrículas existentes. O banco remoto ainda só contém dados de configuração.
-3. Configurar a integração de WhatsApp e uma Edge Function/worker para consumir `message_queue`; nenhuma Edge Function existe hoje.
-4. Integrar o provedor de assinatura e pagamento para alimentar `document_acceptances` e `installments`.
+2. Corrigir os 10 alunos sem oferta de 2027 (9º ano → 1ª série), os 2 sem turma atual e decidir os 103 casos de turno antes de qualquer disparo em escala. A base já foi importada.
+3. Publicar o agente de WhatsApp e configurar seu cron externo para consumir `message_queue`. As Edge Functions de contrato e e-mail existem; a instância UAZAPI e o envio real precisam de validação controlada.
+4. Integrar Asaas para criar cliente e cobranças a partir de `payment_dispatches`, alimentando `installments` por webhook. Boleto ainda não está disponível no ambiente atual.
 5. Habilitar a proteção contra senhas vazadas no Supabase Auth e revisar os avisos de `SECURITY DEFINER` — as três RPCs públicas são intencionais, mas devem continuar restritas aos seus parâmetros atuais.
 
 ## 5. Validação
