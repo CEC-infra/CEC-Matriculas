@@ -156,6 +156,36 @@ export function prepareFamilyContract(token, email) {
   return supabase.rpc('onboarding_prepare_family_contract', { p_token: token, p_confirmation_email: email || null });
 }
 
+export function chooseOnboardingPlan(token, installments) {
+  return supabase.rpc('onboarding_choose_plan', { p_token: token, p_installments: installments });
+}
+
+export function chooseOnboardingBilling(token, method) {
+  return supabase.rpc('onboarding_choose_billing', { p_token: token, p_method: method });
+}
+
+export function createAsaasCheckout(token) {
+  return supabase.invokeFunction('asaas-checkout', { token });
+}
+
+export function addRematriculaChild(token, child) {
+  return supabase.rpc('onboarding_add_child', {
+    p_token: token,
+    p_name: child.name,
+    p_grade_id: child.gradeId,
+    p_birth_date: child.birthDate || null,
+    p_previous_school: child.previousSchool || null
+  });
+}
+
+export function removeAddedChild(token, studentId) {
+  return supabase.rpc('onboarding_remove_added_child', { p_token: token, p_student_id: studentId });
+}
+
+export function setGuardianRg(token, rg) {
+  return supabase.rpc('onboarding_set_guardian_rg', { p_token: token, p_rg: rg });
+}
+
 export function chooseOnboardingPayment(token, paymentPlanId, method) {
   return supabase.rpc('onboarding_choose_payment', {
     p_token: token,
@@ -257,10 +287,23 @@ export async function generateContractPdf(token) {
   });
 }
 
-export function contractPdfUrl(token, enrollmentId) {
+export function contractPdfUrl(token, enrollmentId, { download = false } = {}) {
   const url = import.meta.env.VITE_SUPABASE_URL;
   if (!url) return '';
-  return `${url}/functions/v1/generate-contract?token=${encodeURIComponent(token)}&enrollment_id=${encodeURIComponent(enrollmentId)}`;
+  return `${url}/functions/v1/generate-contract?token=${encodeURIComponent(token)}&enrollment_id=${encodeURIComponent(enrollmentId)}${download ? '&download=1' : ''}`;
+}
+
+/** Baixa vários PDFs de uma vez, sem sair da página (o servidor responde como anexo). */
+export function downloadFiles(urls) {
+  urls.filter(Boolean).forEach((url, index) => {
+    window.setTimeout(() => {
+      const frame = document.createElement('iframe');
+      frame.style.display = 'none';
+      frame.src = url;
+      document.body.appendChild(frame);
+      window.setTimeout(() => frame.remove(), 60000);
+    }, index * 400);
+  });
 }
 
 export async function sendContractCode(token) {

@@ -89,7 +89,7 @@ async function getSession(supabase: ReturnType<typeof createClient>, token: stri
   return data;
 }
 
-async function servePdf(supabase: ReturnType<typeof createClient>, token: string, enrollmentId: string) {
+async function servePdf(supabase: ReturnType<typeof createClient>, token: string, enrollmentId: string, download = false) {
   const session = await getSession(supabase, token);
   if (!session) return json({ error: "Contrato indisponível" }, 404);
   const { data: acceptance, error } = await supabase
@@ -104,12 +104,20 @@ async function servePdf(supabase: ReturnType<typeof createClient>, token: string
   if (!path) return json({ error: "PDF individual ainda não foi gerado" }, 404);
   const { data: file, error: downloadError } = await supabase.storage.from("contract-files").download(path);
   if (downloadError || !file) throw downloadError || new Error("Arquivo não encontrado");
+  // download=1 baixa direto (botão "Baixar contrato"); sem ele, abre no visualizador.
+  let filename = "contrato-cec.pdf";
+  if (download) {
+    const { data: enrollment } = await supabase.from("enrollments").select("students(full_name)").eq("id", enrollmentId).maybeSingle();
+    const name = String((enrollment as { students?: { full_name?: string } } | null)?.students?.full_name || "aluno")
+      .normalize("NFD").replace(/[\u0300-\u036f]/g, "").replace(/[^A-Za-z0-9]+/g, "-").replace(/^-|-$/g, "").toLowerCase();
+    filename = `contrato-cec-${name}${acceptance?.signed_storage_path ? "-assinado" : ""}.pdf`;
+  }
   return new Response(await file.arrayBuffer(), {
     headers: {
       ...corsHeaders,
       "Content-Type": "application/pdf",
       "Cache-Control": "private, no-store",
-      "Content-Disposition": "inline; filename=contrato-cec.pdf",
+      "Content-Disposition": `${download ? "attachment" : "inline"}; filename=${filename}`,
     },
   });
 }
@@ -261,7 +269,7 @@ Deno.serve(async (request) => {
   try {
     const url = new URL(request.url);
     if (request.method === "GET") {
-      return await servePdf(supabase, url.searchParams.get("token") || "", url.searchParams.get("enrollment_id") || "");
+      return await servePdf(supabase, url.searchParams.get("token") || "", url.searchParams.get("enrollment_id") || "", url.searchParams.get("download") === "1");
     }
     if (request.method !== "POST") return json({ error: "Método não suportado" }, 405);
     const body = await request.json();
