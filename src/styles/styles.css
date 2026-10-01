@@ -579,7 +579,9 @@ a:hover { color: var(--navy); }
 .contract-data-modal__readonly small { color: var(--ink-mute); font-size: 11px; }
 .contract-data-modal__full { grid-column: 1 / -1; }
 .contract-data-modal__actions { display: flex; align-items: center; justify-content: space-between; gap: 14px; padding: 16px 24px 22px; border-top: 1px solid var(--line-3); }
+.contract-data-modal__actions > div { display: flex; flex-direction: column; gap: 8px; }
 .contract-data-modal__actions span { color: var(--ink-mute); font-size: 12px; line-height: 1.45; max-width: 420px; }
+.contract-data-modal__error { margin: 0; color: var(--red); font-size: 12px; font-weight: 700; line-height: 1.45; }
 @media (min-width: 620px) { .contract-setup-card__fields { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); } }
 @media (min-width: 700px) {
   .onboarding-page { padding: 48px 28px 72px; }
