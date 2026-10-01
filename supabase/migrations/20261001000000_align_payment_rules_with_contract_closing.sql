@@ -1,5 +1,6 @@
--- Regras de pagamento 2027: sem descontos, sem boleto e sem multa/juros.
--- A quantidade de parcelas é travada pela data em que o contrato é assinado.
+-- Rematrícula 2027: até 31/10 mantém o valor promocional e divide em novembro,
+-- dezembro e janeiro. Depois disso usa a tabela 2027, em pagamento único em
+-- janeiro. Não há condição intermediária de duas parcelas.
 
 update public.payment_policies pp
    set cash_discount_pct = 0,
@@ -12,18 +13,19 @@ update public.payment_policies pp
        last_due_date = '2027-01-20'::date
   from public.campaigns c
  where c.id = pp.campaign_id
-   and c.academic_year = 2027;
+   and c.academic_year = 2027
+   and c.kind = 'rematricula';
 
 update public.payment_plans p
        set name = case p.installments
-         when 3 then 'Fechamento até 20/11'
-         when 2 then 'Fechamento até 20/12'
-         else 'Fechamento até 20/01'
+         when 3 then '3 parcelas — novembro, dezembro e janeiro'
+         when 2 then 'Condição desativada — 2 parcelas'
+         else 'Pagamento único em janeiro'
        end,
        description = case p.installments
-         when 3 then 'Contrato assinado até 20/11 · novembro, dezembro e janeiro'
-         when 2 then 'Contrato assinado de 21/11 a 20/12 · dezembro e janeiro'
-         else 'Contrato assinado de 21/12 a 20/01 · janeiro'
+         when 3 then 'Contrato assinado até 31/10/2026 · vencimentos em novembro, dezembro e janeiro'
+         when 2 then 'Condição não utilizada na rematrícula 2027'
+         else 'Contrato assinado após 31/10/2026 · pagamento único em janeiro'
        end,
        discount_pct = 0,
        due_dates = case p.installments
@@ -32,22 +34,25 @@ update public.payment_plans p
          else array['2027-01-20'::date]
        end,
        available_until = case p.installments
-         when 3 then '2026-11-20'::date
-         when 2 then '2026-12-20'::date
+         when 3 then '2026-10-31'::date
+         when 2 then '2026-10-31'::date
          else '2027-01-20'::date
        end,
-       sort_order = case p.installments when 3 then 1 when 2 then 2 else 3 end
+       active = case when p.installments = 2 then false else true end,
+       sort_order = case p.installments when 3 then 1 when 1 then 2 else 99 end
   from public.campaigns c
  where c.id = p.campaign_id
-   and c.academic_year = 2027;
+   and c.academic_year = 2027
+   and c.kind = 'rematricula';
 
--- Não há desconto individual em novas matrículas. Contratos e pagamentos já
+-- Não há desconto individual adicional na rematrícula. Contratos e pagamentos já
 -- consolidados não são alterados para preservar o histórico financeiro.
 update public.enrollments e
    set discount_pct = 0
   from public.campaigns c
  where c.id = e.campaign_id
    and c.academic_year = 2027
+   and c.kind = 'rematricula'
    and e.signed_at is null
    and not exists (
      select 1 from public.installments i
@@ -62,11 +67,15 @@ returns uuid language plpgsql stable security definer set search_path = '' as $$
 declare
   v_installments smallint;
   v_plan_id uuid;
+  v_campaign_kind public.campaign_kind;
 begin
+  select c.kind into v_campaign_kind from public.campaigns c where c.id = p_campaign_id;
   v_installments := case
-    when p_closed_on <= '2026-11-20'::date then 3
-    when p_closed_on <= '2026-12-20'::date then 2
-    when p_closed_on <= '2027-01-20'::date then 1
+    when v_campaign_kind = 'rematricula'::public.campaign_kind and p_closed_on <= '2026-10-31'::date then 3
+    when v_campaign_kind = 'rematricula'::public.campaign_kind and p_closed_on <= '2027-01-20'::date then 1
+    when v_campaign_kind <> 'rematricula'::public.campaign_kind and p_closed_on <= '2026-11-20'::date then 3
+    when v_campaign_kind <> 'rematricula'::public.campaign_kind and p_closed_on <= '2026-12-20'::date then 2
+    when v_campaign_kind <> 'rematricula'::public.campaign_kind and p_closed_on <= '2027-01-20'::date then 1
     else null
   end;
   if v_installments is null then
@@ -145,7 +154,7 @@ begin
     if not exists (select 1 from public.installments where enrollment_id = v_enrollment.id and status <> 'cancelado') then perform public.generate_installments(v_enrollment.id); end if;
     update public.installments set method = p_method where enrollment_id = v_enrollment.id and status = 'pendente';
     insert into public.enrollment_events(enrollment_id, code, title, body, actor, metadata)
-    values(v_enrollment.id, 'PAYMENT_CHOICE_CONFIRMED', 'Forma de pagamento escolhida', 'Parcelamento definido pela data de assinatura; aguardando a cobrança.', 'responsavel', jsonb_build_object('method', p_method, 'payment_plan_id', v_plan_id));
+    values(v_enrollment.id, 'PAYMENT_CHOICE_CONFIRMED', 'Forma de pagamento escolhida', 'Condição de pagamento definida pela data de assinatura; aguardando a cobrança.', 'responsavel', jsonb_build_object('method', p_method, 'payment_plan_id', v_plan_id));
   end loop;
   update public.enrollment_onboarding_sessions set status = 'concluida', current_step = 5, completed_at = now(), last_opened_at = now() where id = v_session.id;
   return public.onboarding_open(p_token);
