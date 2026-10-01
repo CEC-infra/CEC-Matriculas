@@ -143,6 +143,10 @@ export function prepareOnboardingContract(token, enrollmentId, email) {
   });
 }
 
+export function chooseRematriculaPaymentOption(token, option) {
+  return supabase.rpc('onboarding_choose_payment_option', { p_token: token, p_option: option });
+}
+
 export function chooseOnboardingPayment(token, paymentPlanId, method) {
   return supabase.rpc('onboarding_choose_payment', {
     p_token: token,

@@ -3,9 +3,10 @@ import { useNavigate, useSearchParams } from 'react-router-dom';
 import { Field, LogoBlocks } from '../components/ui';
 import DataState from '../components/DataState';
 import cecLogo from '../assets/cec-logo.png';
+import { PaymentChoiceBar, SignedContracts, ValuesStep } from '../components/RematriculaValues';
 import { formatCpf, formatPhoneBr, money } from '../lib/format';
 import {
-  chooseOnboardingPayment, createMatriculaOnboarding, getPublicOfferings,
+  chooseOnboardingPayment, chooseRematriculaPaymentOption, createMatriculaOnboarding, getPublicOfferings,
   identifyRematriculaOnboarding, openEnrollmentOnboarding, prepareOnboardingContract,
   lookupExistingFamilyForNewEnrollment, selectRematriculaChildren, startEnrollmentOnboarding,
   startRematriculaFromNewEnrollment
@@ -14,14 +15,14 @@ import {
 const newFamily = { cpf: '', fullName: '', phone: '', email: '', address: '', children: [{ name: '', birthDate: '', gradeId: '', previousSchool: '' }] };
 
 function Stepper({ step, flow }) {
-  const labels = flow === 'rematricula' ? ['Identificação', 'Alunos', 'Assinaturas', 'Cobrança'] : ['Dados', 'Assinaturas', 'Cobrança'];
+  const labels = flow === 'rematricula' ? ['Identificação', 'Alunos', 'Valores', 'Assinaturas', 'Concluir'] : ['Dados', 'Assinaturas', 'Cobrança'];
   return <div className="steps onboarding-steps">{labels.map((label, index) => <div className={`step${index + 1 <= step ? ' is-done' : ''}`} key={label}><i /><span>{label}</span></div>)}</div>;
 }
 
 function Title({ flow, step }) {
   const remat = flow === 'rematricula';
   const heading = remat
-    ? (step <= 1 ? 'Vamos encontrar sua família' : step === 2 ? 'Confirme quem vai continuar em 2027' : step === 3 ? 'Uma assinatura para cada aluno' : 'Como prefere receber a cobrança?')
+    ? (step <= 1 ? 'Vamos encontrar sua família' : step === 2 ? 'Confirme quem vai continuar em 2027' : step === 3 ? 'Confira os valores e monte seu pagamento' : step === 4 ? 'Uma assinatura para cada aluno' : 'Tudo pronto para concluir')
     : (step <= 1 ? 'Comece a matrícula da sua família' : step === 3 ? 'Uma assinatura para cada aluno' : 'Como prefere receber a cobrança?');
   return <div className="public-head--navy onboarding-head"><div style={{ display: 'flex', alignItems: 'center', gap: 12 }}><LogoBlocks /><span className="public-kicker">{remat ? 'Rematrícula 2027' : 'Matrícula 2027'}</span></div><h2>{heading}</h2><p>Você pode fechar esta página e continuar depois pelo mesmo link. Seus avanços ficam salvos com segurança.</p></div>;
 }
@@ -62,6 +63,8 @@ export default function EnrollmentOnboarding({ initialFlow = null }) {
   const [email, setEmail] = useState('');
   const [payment, setPayment] = useState({ method: 'pix' });
   const [offerings, setOfferings] = useState([]);
+  const [editing, setEditing] = useState(null); // 'children' | 'values' — volta a uma etapa já concluída
+  const [finishing, setFinishing] = useState(false);
   const token = params.get('j');
 
   const gradeOptions = useMemo(() => offerings.map((item) => ({ value: item.grade_id, label: `${item.grades?.name || 'Série'} · ${money(item.amount_cents)}` })), [offerings]);
@@ -105,7 +108,7 @@ export default function EnrollmentOnboarding({ initialFlow = null }) {
     setParams({}, { replace: true });
   }
   function apply(next) {
-    setData(next); setError('');
+    setData(next); setError(''); setEditing(null);
     if (next?.guardian?.email) setEmail(next.guardian.email);
     if (next?.children) setSelected(next.children.filter((item) => item.selected && item.eligible !== false).map((item) => item.student_id));
   }
@@ -158,6 +161,18 @@ export default function EnrollmentOnboarding({ initialFlow = null }) {
     } catch (reason) { setNotice(reason.message || 'Não foi possível preparar o contrato.'); }
     finally { setBusy(false); }
   }
+  async function confirmValues(option) {
+    setBusy(true); setNotice('');
+    try { apply(await chooseRematriculaPaymentOption(token, option)); window.scrollTo({ top: 0, behavior: 'smooth' }); }
+    catch (reason) { setNotice(reason.message || 'Não foi possível salvar a forma de pagamento.'); }
+    finally { setBusy(false); }
+  }
+  async function concludeRematricula() {
+    setBusy(true); setNotice('');
+    try { apply(await chooseOnboardingPayment(token, null, data.payment_choice?.method || 'pix')); }
+    catch (reason) { setNotice(reason.message || 'Não foi possível concluir a rematrícula.'); }
+    finally { setBusy(false); }
+  }
   async function choosePayment(event) {
     event.preventDefault(); setBusy(true); setNotice('');
     try { apply(await chooseOnboardingPayment(token, null, payment.method)); setNotice('Preferência registrada. A escola enviará a cobrança pelo meio escolhido.'); }
@@ -171,7 +186,17 @@ export default function EnrollmentOnboarding({ initialFlow = null }) {
 
   if (!flow) return <main className="onboarding-page"><section className="onboarding-shell"><div className="onboarding-choice"><img className="onboarding-choice-logo" src={cecLogo} alt="Centro Educacional Cristão" /><span>CEC · 2027</span><h1>Como podemos ajudar?</h1><p>Escolha a jornada para começar. Você receberá um link seguro para continuar de onde parou.</p><div className="onboarding-choice-actions"><button type="button" className="cta" onClick={() => chooseFlow('matricula_nova')}>Quero fazer uma matrícula nova</button><button type="button" className="btn" onClick={() => chooseFlow('rematricula')}>Quero fazer uma rematrícula</button></div></div></section></main>;
 
-  const step = data?.step || (flow === 'rematricula' ? 1 : 1);
+  const serverStep = data?.step || 1;
+  const remat = flow === 'rematricula';
+  // Rematrícula: a etapa Valores (3) fica entre Alunos e Assinaturas. O banco
+  // guarda as assinaturas como passo 3; a escolha de pagamento marca values_confirmed.
+  const step = !remat ? serverStep
+    : editing === 'children' ? 2
+    : editing === 'values' ? 3
+    : data?.status === 'concluida' ? 5
+    : serverStep >= 4 || finishing ? 5
+    : serverStep === 3 ? (data?.values_confirmed ? 4 : 3)
+    : serverStep;
   const selectedChildren = (data?.children || []).filter((child) => child.selected);
   const eligibleChildren = (data?.children || []).filter((child) => child.eligible !== false);
   const selectedEligibleChildren = selected.filter((studentId) => eligibleChildren.some((child) => child.student_id === studentId));
@@ -180,9 +205,12 @@ export default function EnrollmentOnboarding({ initialFlow = null }) {
     {flow === 'rematricula' && step <= 1 ? <form onSubmit={identify} className="onboarding-form"><p className="meta">Para proteger os dados da família, confirmamos CPF e WhatsApp antes de apresentar os alunos vinculados.</p><div className="grid grid--2"><Field label="CPF do responsável" ph="000.000.000-00" value={lookup.cpf} onChange={(value) => setLookup((v) => ({ ...v, cpf: formatCpf(value) }))} inputMode="numeric" maxLength={14} required /><Field label="WhatsApp" ph="(83) 9 0000-0000" value={lookup.phone} onChange={(value) => setLookup((v) => ({ ...v, phone: value }))} required /><Field label="Nome completo" ph="Opcional, para confirmar" value={lookup.fullName} onChange={(value) => setLookup((v) => ({ ...v, fullName: value }))} /></div><button className="cta" disabled={busy}>{busy ? 'Localizando…' : 'Continuar →'}</button></form> : null}
     {flow === 'matricula_nova' && step <= 1 ? <form onSubmit={saveNewFamily} className="onboarding-form"><div className="grid grid--2"><Field label="CPF do responsável" ph="000.000.000-00" value={family.cpf} onChange={(value) => updateNewFamily('cpf', formatCpf(value))} inputMode="numeric" maxLength={14} required /><Field label="Nome completo do responsável" value={family.fullName} onChange={(value) => updateNewFamily('fullName', value)} required /><Field label="WhatsApp" value={family.phone} onChange={(value) => updateNewFamily('phone', value)} required /><Field label="E-mail" type="email" value={family.email} onChange={(value) => updateNewFamily('email', value)} required /><Field label="Endereço" value={family.address} onChange={(value) => updateNewFamily('address', value)} required /></div>{existingFamilyLoading ? <span className="meta">Verificando se já existe um cadastro com estes dados…</span> : null}<ExistingFamilyMatch match={existingFamily} busy={busy} onStartRematricula={startMatchedRematricula} onContinueNewEnrollment={continueWithNewChild} /><div className="onboarding-child-editor"><div><h3>Alunos</h3><p>Inclua todos os filhos que deseja matricular agora.</p></div>{family.children.map((child, index) => <div className="onboarding-child-fields" key={index}><Field label="Nome completo do aluno" value={child.name} onChange={(value) => updateChild(index, 'name', value)} required /><Field label="Série pretendida" type="select" options={gradeOptions} value={child.gradeId} onChange={(value) => updateChild(index, 'gradeId', value)} required /><Field label="Data de nascimento" type="date" value={child.birthDate} onChange={(value) => updateChild(index, 'birthDate', value)} /><Field label="Escola anterior" value={child.previousSchool} onChange={(value) => updateChild(index, 'previousSchool', value)} />{family.children.length > 1 ? <button type="button" className="text-link" onClick={() => removeChild(index)}>Remover aluno</button> : null}</div>)}<button type="button" className="btn" onClick={() => setFamily((v) => ({ ...v, children: [...v.children, { name: '', birthDate: '', gradeId: '', previousSchool: '' }] }))}>+ Adicionar outro filho</button></div><button className="cta" disabled={busy}>{busy ? 'Salvando…' : 'Continuar para contratos →'}</button></form> : null}
     {flow === 'rematricula' && step === 2 ? <form onSubmit={selectChildren} className="onboarding-form"><div className="onboarding-guardian"><strong>{data.guardian?.name}</strong><span>Estes alunos foram encontrados como vinculados ao seu cadastro.</span></div><div className="onboarding-children">{data.children?.map((child) => <label className={`onboarding-child-card${selected.includes(child.student_id) ? ' is-selected' : ''}${child.eligible === false ? ' is-unavailable' : ''}`} key={child.student_id}><input type="checkbox" disabled={child.eligible === false} checked={selected.includes(child.student_id)} onChange={(event) => setSelected((items) => event.target.checked ? [...items, child.student_id] : items.filter((id) => id !== child.student_id))} /><span><strong>{child.name}</strong><small>{child.current_grade ? `${child.current_grade} → ` : ''}{child.target_grade || 'Série a confirmar'}</small>{child.eligible === false ? <small>{child.eligibility_reason}</small> : null}</span></label>)}</div>{!eligibleChildren.length ? <div className="notice"><span>Nenhum aluno deste cadastro está pronto para a rematrícula. Fale com a secretaria para corrigir a turma ou o valor de 2027.</span></div> : null}<button className="cta" disabled={busy || !selectedEligibleChildren.length}>{busy ? 'Salvando…' : 'Confirmar alunos →'}</button></form> : null}
-    {step === 3 ? <section className="onboarding-form"><div className="onboarding-guardian"><strong>Assinaturas pendentes</strong><span>Você fará uma assinatura por aluno. Depois volte para este mesmo link para acompanhar.</span></div><Field label="E-mail para confirmação das assinaturas" type="email" value={email} onChange={setEmail} required /><div className="onboarding-contract-list">{selectedChildren.map((child) => <article className="onboarding-contract-card" key={child.enrollment_id}><div><strong>{child.name}</strong><span>{child.target_grade}</span></div>{child.contract_status === 'assinada' ? <span className="badge badge--green">Assinado</span> : <button className="btn btn--primary" onClick={() => child.contract_token ? navigate(`/contrato/${child.contract_token}`) : prepareContract(child.enrollment_id)} disabled={busy}>{child.contract_token ? 'Continuar assinatura' : 'Preparar contrato'}</button>}</article>)}</div>{allSigned ? <button className="cta" onClick={() => apply({ ...data, step: 4, status: 'pagamento' })}>Seguir para pagamento →</button> : null}</section> : null}
-    {data.status === 'concluida' ? <div className="notice"><span>Matrícula concluída. A cobrança ainda será enviada pela escola pelo meio escolhido.</span></div> : null}
-    {step >= 4 && data.status !== 'concluida' ? <form onSubmit={choosePayment} className="onboarding-form"><div className="onboarding-guardian"><strong>Forma de pagamento</strong><span>Na rematrícula concluída até 31/10, o valor promocional é dividido em novembro, dezembro e janeiro. Depois, vale a tabela de 2027 com pagamento único em janeiro. Informe sua preferência; você não será cobrado nesta etapa.</span></div><div className="onboarding-methods"><button type="button" className={`btn${payment.method === 'cartao' ? ' btn--primary' : ''}`} onClick={() => setPayment({ method: 'cartao' })}>Cartão</button><button type="button" className={`btn${payment.method === 'pix' ? ' btn--primary' : ''}`} onClick={() => setPayment({ method: 'pix' })}>Pix</button></div><button className="cta" disabled={busy}>{busy ? 'Registrando…' : 'Registrar preferência'}</button></form> : null}
+    {!remat && step === 3 ? <section className="onboarding-form"><div className="onboarding-guardian"><strong>Assinaturas pendentes</strong><span>Você fará uma assinatura por aluno. Depois volte para este mesmo link para acompanhar.</span></div><Field label="E-mail para confirmação das assinaturas" type="email" value={email} onChange={setEmail} required /><div className="onboarding-contract-list">{selectedChildren.map((child) => <article className="onboarding-contract-card" key={child.enrollment_id}><div><strong>{child.name}</strong><span>{child.target_grade}</span></div>{child.contract_status === 'assinada' ? <span className="badge badge--green">Assinado</span> : <button className="btn btn--primary" onClick={() => child.contract_token ? navigate(`/contrato/${child.contract_token}`) : prepareContract(child.enrollment_id)} disabled={busy}>{child.contract_token ? 'Continuar assinatura' : 'Preparar contrato'}</button>}</article>)}</div>{allSigned ? <button className="cta" onClick={() => apply({ ...data, step: 4, status: 'pagamento' })}>Seguir para pagamento →</button> : null}</section> : null}
+    {!remat && data.status === 'concluida' ? <div className="notice"><span>Matrícula concluída. A cobrança ainda será enviada pela escola pelo meio escolhido.</span></div> : null}
+    {!remat && step >= 4 && data.status !== 'concluida' ? <form onSubmit={choosePayment} className="onboarding-form"><div className="onboarding-guardian"><strong>Forma de pagamento</strong><span>Na rematrícula concluída até 31/10, o valor promocional é dividido em novembro, dezembro e janeiro. Depois, vale a tabela de 2027 com pagamento único em janeiro. Informe sua preferência; você não será cobrado nesta etapa.</span></div><div className="onboarding-methods"><button type="button" className={`btn${payment.method === 'cartao' ? ' btn--primary' : ''}`} onClick={() => setPayment({ method: 'cartao' })}>Cartão</button><button type="button" className={`btn${payment.method === 'pix' ? ' btn--primary' : ''}`} onClick={() => setPayment({ method: 'pix' })}>Pix</button></div><button className="cta" disabled={busy}>{busy ? 'Registrando…' : 'Registrar preferência'}</button></form> : null}
+    {remat && step === 3 ? <ValuesStep key={data.payment_choice?.option || 'novo'} data={data} busy={busy} onConfirm={confirmValues} onEditChildren={() => setEditing('children')} /> : null}
+    {remat && step === 4 ? <section className="onboarding-form"><PaymentChoiceBar data={data} onChange={() => setEditing('values')} /><div className="onboarding-guardian"><strong>Assinaturas pendentes</strong><span>Você fará uma assinatura por aluno. Depois volte para este mesmo link para acompanhar.</span></div><Field label="E-mail para confirmação das assinaturas" type="email" value={email} onChange={setEmail} required /><div className="onboarding-contract-list">{selectedChildren.map((child) => <article className="onboarding-contract-card" key={child.enrollment_id}><div><strong>{child.name}</strong><span>{child.target_grade} · {money(child.amount_cents)}</span></div>{child.contract_status === 'assinada' ? <span className="badge badge--green">Assinado</span> : <button className="btn btn--primary" onClick={() => child.contract_token ? navigate(`/contrato/${child.contract_token}`) : prepareContract(child.enrollment_id)} disabled={busy}>{child.contract_token ? 'Continuar assinatura' : 'Preparar contrato'}</button>}</article>)}</div>{allSigned ? <button className="cta" onClick={() => setFinishing(true)}>Seguir para concluir →</button> : null}</section> : null}
+    {remat && step === 5 ? <section className="onboarding-form values-finish">{data.status === 'concluida' ? <div className="values-done"><strong>Rematrícula concluída 🎉</strong><span>Seus contratos estão assinados e a forma de pagamento foi registrada. O link de pagamento será enviado aqui na página e pelo WhatsApp.</span></div> : <div className="onboarding-guardian"><strong>Contratos assinados</strong><span>Confira a forma de pagamento e conclua. Você pode baixar uma cópia de cada contrato assinado.</span></div>}<PaymentChoiceBar data={data} /><SignedContracts data={data} />{data.status === 'concluida' ? <div className="values-checkout"><strong>Pagamento</strong><span>O checkout ainda não está disponível. Assim que for liberado, o botão de pagamento aparecerá aqui.</span><button type="button" className="btn" disabled>Ir para o pagamento</button></div> : <button className="cta" disabled={busy} onClick={concludeRematricula}>{busy ? 'Concluindo…' : 'Concluir rematrícula →'}</button>}</section> : null}
     {notice ? <div className="notice"><span>{notice}</span></div> : null}
   </div></section></main> : null}</DataState>;
 }

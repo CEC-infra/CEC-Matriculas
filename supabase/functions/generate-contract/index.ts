@@ -154,22 +154,17 @@ async function generate(supabase: ReturnType<typeof createClient>, token: string
     if (existing?.status === "assinado") {
       return json({ error: "Este contrato já foi assinado e seu PDF final está preservado." }, 409);
     }
-    if (existing?.contract_session_id === session.id && existing.generated_storage_path && existing.generated_document_hash) {
-      files.push({ enrollment_id: row.enrollment_id, path: existing.generated_storage_path, hash: existing.generated_document_hash });
-      continue;
-    }
-
     const pdf = await PDFDocument.load(template, { ignoreEncryption: true });
     const page = pdf.getPages()[0];
     const font = await pdf.embedFont(StandardFonts.Helvetica);
-    drawField(page, font, guardian.full_name, 80, 734, 450);
-    drawField(page, font, guardian.phone, 95, 714, 430);
-    drawField(page, font, guardian.rg, 68, 694, 210);
-    drawField(page, font, guardian.cpf, 350, 694, 175);
-    drawField(page, font, guardian.address, 96, 673, 420);
-    drawField(page, font, enrollment.students.full_name, 86, 622, 430);
-    drawField(page, font, enrollment.grades.name, 108, 602, 95);
-    drawField(page, font, shiftLabel(enrollment.target_shift), 255, 602, 120);
+    drawField(page, font, guardian.full_name, 84, 734, 450);
+    drawField(page, font, guardian.phone, 93, 714, 441);
+    drawField(page, font, guardian.rg, 71, 694, 241);
+    drawField(page, font, guardian.cpf, 351, 694, 183);
+    drawField(page, font, guardian.address, 101, 673, 433);
+    drawField(page, font, enrollment.students.full_name, 81, 622, 453);
+    drawField(page, font, enrollment.grades.name, 98, 602, 110);
+    drawField(page, font, shiftLabel(enrollment.target_shift), 252, 602, 282);
     const output = await pdf.save();
     const outputHash = await sha256(output);
     // A correção dos dados invalida o rascunho antes da assinatura. O mesmo

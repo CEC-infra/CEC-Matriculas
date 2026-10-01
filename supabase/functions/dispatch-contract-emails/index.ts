@@ -1,5 +1,7 @@
 import "jsr:@supabase/functions-js/edge-runtime.d.ts";
 import { createClient } from "npm:@supabase/supabase-js@2";
+import { LOGO_CONTENT_ID, LOGO_JPEG_BASE64 } from "./logo.ts";
+import { renderContractCodeEmail } from "./templates.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -18,6 +20,24 @@ function errorMessage(value: unknown) {
   if (typeof value === "string") return value.slice(0, 1000);
   if (value && typeof value === "object" && "message" in value && typeof value.message === "string") return value.message.slice(0, 1000);
   return "Falha desconhecida do provedor de e-mail";
+}
+
+type QueueItem = { recipient: string; subject: string; html_body: string; template: string | null; template_data: Record<string, unknown> | null };
+
+// Itens com template conhecido ganham o layout da marca com a logo inline;
+// os demais seguem com o html_body gravado pelo banco.
+function buildMessage(from: string, item: QueueItem) {
+  const base = { from, to: [item.recipient], subject: item.subject };
+  if (item.template === "contract_code" && typeof item.template_data?.code === "string") {
+    const { html, text } = renderContractCodeEmail(item.template_data as { code: string; expires_minutes?: number });
+    return {
+      ...base,
+      html,
+      text,
+      attachments: [{ filename: "logo-cec-matriculas.jpg", content: LOGO_JPEG_BASE64, content_id: LOGO_CONTENT_ID }],
+    };
+  }
+  return { ...base, html: item.html_body };
 }
 
 Deno.serve(async (request) => {
@@ -52,7 +72,7 @@ Deno.serve(async (request) => {
 
     const { data: item, error: queueError } = await supabase
       .from("email_queue")
-      .select("id, recipient, subject, html_body, attempts")
+      .select("id, recipient, subject, html_body, template, template_data, attempts")
       .eq("contract_session_id", session.id)
       .eq("status", "pendente")
       .lte("scheduled_for", new Date().toISOString())
@@ -75,7 +95,7 @@ Deno.serve(async (request) => {
     const resendResponse = await fetch("https://api.resend.com/emails", {
       method: "POST",
       headers: { Authorization: `Bearer ${resendKey}`, "Content-Type": "application/json" },
-      body: JSON.stringify({ from: emailFrom, to: [item.recipient], subject: item.subject, html: item.html_body }),
+      body: JSON.stringify(buildMessage(emailFrom, item)),
     });
     const resendBody = await resendResponse.json().catch(() => null);
     if (!resendResponse.ok) {

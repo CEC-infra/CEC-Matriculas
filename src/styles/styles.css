@@ -538,6 +538,8 @@ a:hover { color: var(--navy); }
 .contract-code-input::placeholder { color: var(--ink-faint); letter-spacing: 5px; }
 .contract-code-input:focus { border-color: var(--navy-500); box-shadow: 0 0 0 3px rgba(74,123,216,.12); }
 .contract-confirmation__actions { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+.contract-signature { display: flex; flex-direction: column; gap: 15px; }
+.contract-signature__read-link { align-self: flex-start; color: var(--navy); font-size: 13px; font-weight: 700; text-decoration: underline; text-underline-offset: 3px; }
 .contract-setup-card { display: flex; flex-direction: column; gap: 20px; }
 .contract-setup-card__head { display: flex; align-items: flex-start; justify-content: space-between; gap: 14px; flex-wrap: wrap; }
 .contract-setup-card__fields { display: grid; grid-template-columns: 1fr; gap: 16px; padding: 18px; border: 1px solid var(--line-2); border-radius: var(--r-lg); background: var(--surface-2); }
@@ -657,6 +659,7 @@ a:hover { color: var(--navy); }
   .contract-setup-card__action { align-items: stretch; }
   .contract-setup-card__action .btn { width: 100%; }
   .contract-confirmation { padding: 16px; }
+  .contract-confirmation__actions .btn, .contract-signature .cta { width: 100%; }
   .contract-pdf { height: 72vh; min-height: 500px; }
   .contract-pdf-unavailable { min-height: 310px; }
   .contract-pdf-panel__head { align-items: flex-start; flex-direction: column; }
@@ -679,3 +682,51 @@ a:hover { color: var(--navy); }
 .tab { display: inline-block; color: var(--ink-mute); }
 .tab:hover { color: var(--navy); }
 .back-link:hover { color: var(--orange-ink); }
+
+/* Rematrícula · etapa Valores */
+.values-step { gap: 22px; }
+.values-hero { display: flex; flex-direction: column; gap: 12px; padding: 20px; border-radius: var(--r-xl); background: linear-gradient(135deg, #FFF3E8, #FFF9F2); border: 1.5px solid #F6C9A2; }
+.values-hero--plain { background: var(--surface-2); border-color: var(--line-2); }
+.values-hero__tag { align-self: flex-start; padding: 4px 10px; border-radius: 999px; background: var(--orange-deep); color: #fff; font-size: 11px; font-weight: 800; letter-spacing: .5px; text-transform: uppercase; }
+.values-hero--plain .values-hero__tag { background: var(--navy); }
+.values-hero__numbers { display: flex; flex-wrap: wrap; align-items: flex-end; gap: 10px 28px; }
+.values-hero__numbers > div { display: flex; flex-direction: column; gap: 2px; }
+.values-hero__numbers small { color: var(--ink-mute); font-size: 12px; }
+.values-hero__numbers s { color: var(--ink-mute); font-size: 18px; }
+.values-hero__main strong { color: var(--navy); font-family: var(--font-display); font-size: clamp(30px, 6vw, 40px); line-height: 1.05; }
+.values-hero p { margin: 0; color: var(--ink-body); font-size: 14px; line-height: 1.5; }
+.values-hero p b { color: var(--green-ink); }
+.values-children { display: flex; flex-direction: column; gap: 8px; }
+.values-children article { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 12px 14px; border: 1px solid var(--line-2); border-radius: var(--r-lg); background: var(--surface-2); }
+.values-children article > div:first-child { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
+.values-children strong { color: var(--navy); font-size: 14px; }
+.values-children span { color: var(--ink-mute); font-size: 12px; }
+.values-children__price { display: flex; flex-direction: column; align-items: flex-end; }
+.values-children__price s { color: var(--ink-mute); font-size: 12px; }
+.values-children__price b { color: var(--navy); font-size: 15px; }
+.values-children .text-link { align-self: flex-start; }
+.values-config { display: flex; flex-direction: column; gap: 12px; }
+.values-config h3 { color: var(--navy); font-size: 16px; }
+.values-segment { display: grid; grid-template-columns: repeat(auto-fit, minmax(96px, 1fr)); gap: 8px; }
+.values-segment button { display: flex; flex-direction: column; align-items: center; gap: 2px; padding: 12px 8px; border: 1.5px solid var(--line-2); border-radius: var(--r-md); background: var(--surface); cursor: pointer; font-family: inherit; }
+.values-segment button strong { color: var(--navy); font-size: 17px; }
+.values-segment button small { color: var(--ink-mute); font-size: 11.5px; }
+.values-segment button.is-active { border-color: var(--orange-deep); background: #FFF3E8; box-shadow: 0 0 0 3px rgb(228 88 28 / .12); }
+.values-methods { display: flex; flex-wrap: wrap; gap: 8px; }
+.values-schedule { display: flex; flex-direction: column; border: 1px solid var(--line-2); border-radius: var(--r-lg); overflow: hidden; }
+.values-schedule > div { display: flex; justify-content: space-between; gap: 12px; padding: 11px 14px; font-size: 13.5px; color: var(--ink-body); }
+.values-schedule > div + div { border-top: 1px solid var(--line-2); }
+.values-schedule b { color: var(--navy); }
+.values-schedule__total { background: var(--surface-2); font-weight: 700; }
+.values-choice-bar { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 12px 14px; border-radius: var(--r-lg); background: var(--green-soft); border: 1px solid var(--green-line); }
+.values-choice-bar > div { display: flex; flex-direction: column; gap: 2px; }
+.values-choice-bar small { color: var(--green-ink); font-size: 11.5px; font-weight: 700; }
+.values-choice-bar strong { color: var(--navy); font-size: 14px; }
+.values-downloads { display: flex; flex-direction: column; gap: 8px; }
+.values-downloads h3 { color: var(--navy); font-size: 15px; }
+.values-downloads .btn { justify-content: flex-start; }
+.values-done { display: flex; flex-direction: column; gap: 4px; padding: 18px; border-radius: var(--r-xl); background: var(--green-soft); border: 1px solid var(--green-line); }
+.values-done strong { color: var(--green-ink); font-size: 18px; }
+.values-done span, .values-checkout span { color: var(--ink-body); font-size: 13px; line-height: 1.5; }
+.values-checkout { display: flex; flex-direction: column; gap: 8px; padding: 16px; border: 1px dashed var(--line); border-radius: var(--r-lg); }
+.values-checkout strong { color: var(--navy); }
