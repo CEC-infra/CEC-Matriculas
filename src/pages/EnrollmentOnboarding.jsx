@@ -4,7 +4,7 @@ import { Field, LogoBlocks } from '../components/ui';
 import DataState from '../components/DataState';
 import cecLogo from '../assets/cec-logo.png';
 import { PaymentChoiceBar, SignedContracts, ValuesStep } from '../components/RematriculaValues';
-import { formatCpf, formatPhoneBr, money } from '../lib/format';
+import { formatCpf, formatPhoneBr, isValidCpf, isValidEmail, isValidPhoneBr, isoToDateBr, maskDateBr, money, parseDateBr } from '../lib/format';
 import {
   chooseOnboardingPayment, chooseRematriculaPaymentOption, createMatriculaOnboarding, getPublicOfferings,
   identifyRematriculaOnboarding, openEnrollmentOnboarding, prepareOnboardingContract,
@@ -12,7 +12,33 @@ import {
   startRematriculaFromNewEnrollment
 } from '../services/data';
 
-const newFamily = { cpf: '', fullName: '', phone: '', email: '', address: '', children: [{ name: '', birthDate: '', gradeId: '', previousSchool: '' }] };
+const emptyChild = { name: '', birthDate: '', birthDateText: '', gradeId: '', previousSchool: '' };
+const newFamily = { cpf: '', fullName: '', phone: '', email: '', address: '', children: [{ ...emptyChild }] };
+
+// Erros do formulário de matrícula nova. Só aparecem depois que a pessoa sai
+// do campo (touched) ou tenta enviar, para não acusar erro no meio da digitação.
+function newFamilyErrors(family) {
+  const today = new Date();
+  const oldest = new Date(today.getFullYear() - 25, today.getMonth(), today.getDate());
+  return {
+    cpf: !isValidCpf(family.cpf) ? (family.cpf ? 'Esse CPF não existe. Confira os 11 dígitos.' : 'Informe o CPF do responsável.') : '',
+    phone: !isValidPhoneBr(family.phone) ? 'Informe o WhatsApp com DDD, ex.: (33) 9 9999-9999.' : '',
+    email: !isValidEmail(family.email) ? 'Informe um e-mail válido, ex.: nome@gmail.com.' : '',
+    children: family.children.map((child) => {
+      if (!child.birthDateText) return '';
+      const iso = parseDateBr(child.birthDateText);
+      if (!iso) return 'Data inválida. Use dia/mês/ano, ex.: 15/03/2019.';
+      const value = new Date(`${iso}T12:00:00`);
+      if (value > today) return 'A data de nascimento não pode ser no futuro.';
+      if (value < oldest) return 'Confira o ano de nascimento.';
+      return '';
+    }),
+  };
+}
+
+function FieldError({ show, message }) {
+  return show && message ? <small className="field-error">{message}</small> : null;
+}
 
 function Stepper({ step, flow }) {
   const labels = flow === 'rematricula' ? ['Identificação', 'Alunos', 'Valores', 'Assinaturas', 'Concluir'] : ['Dados', 'Assinaturas', 'Cobrança'];
@@ -57,6 +83,8 @@ export default function EnrollmentOnboarding({ initialFlow = null }) {
   const [notice, setNotice] = useState('');
   const [lookup, setLookup] = useState({ cpf: '', fullName: '', phone: '' });
   const [family, setFamily] = useState(newFamily);
+  const [touched, setTouched] = useState({});
+  const [triedSubmit, setTriedSubmit] = useState(false);
   const [existingFamily, setExistingFamily] = useState(null);
   const [existingFamilyLoading, setExistingFamilyLoading] = useState(false);
   const [selected, setSelected] = useState([]);
@@ -125,7 +153,14 @@ export default function EnrollmentOnboarding({ initialFlow = null }) {
     finally { setBusy(false); }
   }
   async function saveNewFamily(event) {
-    event.preventDefault(); setBusy(true); setNotice('');
+    event.preventDefault();
+    setTriedSubmit(true);
+    const errors = newFamilyErrors(family);
+    if (errors.cpf || errors.phone || errors.email || errors.children.some(Boolean)) {
+      setNotice('Confira os campos destacados antes de continuar.');
+      return;
+    }
+    setBusy(true); setNotice('');
     try { apply(await createMatriculaOnboarding(token, family)); }
     catch (reason) { setNotice(reason.message || 'Não foi possível salvar a matrícula.'); }
     finally { setBusy(false); }
@@ -182,6 +217,10 @@ export default function EnrollmentOnboarding({ initialFlow = null }) {
   function updateChild(index, key, value) {
     setFamily((current) => ({ ...current, children: current.children.map((child, childIndex) => childIndex === index ? { ...child, [key]: value } : child) }));
   }
+  function updateBirthDate(index, text) {
+    const masked = maskDateBr(text);
+    setFamily((current) => ({ ...current, children: current.children.map((child, childIndex) => childIndex === index ? { ...child, birthDateText: masked, birthDate: parseDateBr(masked) || '' } : child) }));
+  }
   function removeChild(index) { setFamily((current) => ({ ...current, children: current.children.filter((_, childIndex) => childIndex !== index) })); }
 
   if (!flow) return <main className="onboarding-page"><section className="onboarding-shell"><div className="onboarding-choice"><img className="onboarding-choice-logo" src={cecLogo} alt="Centro Educacional Cristão" /><span>CEC · 2027</span><h1>Como podemos ajudar?</h1><p>Escolha a jornada para começar. Você receberá um link seguro para continuar de onde parou.</p><div className="onboarding-choice-actions"><button type="button" className="cta" onClick={() => chooseFlow('matricula_nova')}>Quero fazer uma matrícula nova</button><button type="button" className="btn" onClick={() => chooseFlow('rematricula')}>Quero fazer uma rematrícula</button></div></div></section></main>;
@@ -202,8 +241,24 @@ export default function EnrollmentOnboarding({ initialFlow = null }) {
   const selectedEligibleChildren = selected.filter((studentId) => eligibleChildren.some((child) => child.student_id === studentId));
   const allSigned = selectedChildren.length > 0 && selectedChildren.every((child) => child.contract_status === 'assinada');
   return <DataState loading={loading} error={error} empty={false}>{data ? <main className="onboarding-page"><section className="public onboarding-shell"><Title flow={flow} step={step} /><Stepper flow={flow} step={step} /><div className="public-body onboarding-body">
-    {flow === 'rematricula' && step <= 1 ? <form onSubmit={identify} className="onboarding-form"><p className="meta">Para proteger os dados da família, confirmamos CPF e WhatsApp antes de apresentar os alunos vinculados.</p><div className="grid grid--2"><Field label="CPF do responsável" ph="000.000.000-00" value={lookup.cpf} onChange={(value) => setLookup((v) => ({ ...v, cpf: formatCpf(value) }))} inputMode="numeric" maxLength={14} required /><Field label="WhatsApp" ph="(83) 9 0000-0000" value={lookup.phone} onChange={(value) => setLookup((v) => ({ ...v, phone: value }))} required /><Field label="Nome completo" ph="Opcional, para confirmar" value={lookup.fullName} onChange={(value) => setLookup((v) => ({ ...v, fullName: value }))} /></div><button className="cta" disabled={busy}>{busy ? 'Localizando…' : 'Continuar →'}</button></form> : null}
-    {flow === 'matricula_nova' && step <= 1 ? <form onSubmit={saveNewFamily} className="onboarding-form"><div className="grid grid--2"><Field label="CPF do responsável" ph="000.000.000-00" value={family.cpf} onChange={(value) => updateNewFamily('cpf', formatCpf(value))} inputMode="numeric" maxLength={14} required /><Field label="Nome completo do responsável" value={family.fullName} onChange={(value) => updateNewFamily('fullName', value)} required /><Field label="WhatsApp" value={family.phone} onChange={(value) => updateNewFamily('phone', value)} required /><Field label="E-mail" type="email" value={family.email} onChange={(value) => updateNewFamily('email', value)} required /><Field label="Endereço" value={family.address} onChange={(value) => updateNewFamily('address', value)} required /></div>{existingFamilyLoading ? <span className="meta">Verificando se já existe um cadastro com estes dados…</span> : null}<ExistingFamilyMatch match={existingFamily} busy={busy} onStartRematricula={startMatchedRematricula} onContinueNewEnrollment={continueWithNewChild} /><div className="onboarding-child-editor"><div><h3>Alunos</h3><p>Inclua todos os filhos que deseja matricular agora.</p></div>{family.children.map((child, index) => <div className="onboarding-child-fields" key={index}><Field label="Nome completo do aluno" value={child.name} onChange={(value) => updateChild(index, 'name', value)} required /><Field label="Série pretendida" type="select" options={gradeOptions} value={child.gradeId} onChange={(value) => updateChild(index, 'gradeId', value)} required /><Field label="Data de nascimento" type="date" value={child.birthDate} onChange={(value) => updateChild(index, 'birthDate', value)} /><Field label="Escola anterior" value={child.previousSchool} onChange={(value) => updateChild(index, 'previousSchool', value)} />{family.children.length > 1 ? <button type="button" className="text-link" onClick={() => removeChild(index)}>Remover aluno</button> : null}</div>)}<button type="button" className="btn" onClick={() => setFamily((v) => ({ ...v, children: [...v.children, { name: '', birthDate: '', gradeId: '', previousSchool: '' }] }))}>+ Adicionar outro filho</button></div><button className="cta" disabled={busy}>{busy ? 'Salvando…' : 'Continuar para contratos →'}</button></form> : null}
+    {flow === 'rematricula' && step <= 1 ? <form onSubmit={identify} className="onboarding-form"><p className="meta">Para proteger os dados da família, confirmamos CPF e WhatsApp antes de apresentar os alunos vinculados.</p><div className="grid grid--2"><Field label="CPF do responsável" ph="000.000.000-00" value={lookup.cpf} onChange={(value) => setLookup((v) => ({ ...v, cpf: formatCpf(value) }))} inputMode="numeric" maxLength={14} required /><Field label="WhatsApp" ph="(33) 9 9999-9999" value={lookup.phone} onChange={(value) => setLookup((v) => ({ ...v, phone: formatPhoneBr(value) }))} inputMode="tel" maxLength={16} required /><Field label="Nome completo" ph="Opcional, para confirmar" value={lookup.fullName} onChange={(value) => setLookup((v) => ({ ...v, fullName: value }))} /></div><button className="cta" disabled={busy}>{busy ? 'Localizando…' : 'Continuar →'}</button></form> : null}
+    {flow === 'matricula_nova' && step <= 1 ? (() => {
+      const errors = newFamilyErrors(family);
+      const show = (field) => triedSubmit || touched[field];
+      const touch = (field) => () => setTouched((current) => ({ ...current, [field]: true }));
+      return <form onSubmit={saveNewFamily} className="onboarding-form" noValidate><div className="grid grid--2">
+        <div onBlur={touch('cpf')}><Field label="CPF do responsável" ph="000.000.000-00" value={family.cpf} onChange={(value) => updateNewFamily('cpf', formatCpf(value))} inputMode="numeric" maxLength={14} required /><FieldError show={show('cpf') || family.cpf.length === 14} message={errors.cpf} /></div>
+        <Field label="Nome completo do responsável" value={family.fullName} onChange={(value) => updateNewFamily('fullName', value)} required />
+        <div onBlur={touch('phone')}><Field label="WhatsApp" ph="(33) 9 9999-9999" value={family.phone} onChange={(value) => updateNewFamily('phone', formatPhoneBr(value))} inputMode="tel" maxLength={16} required /><FieldError show={show('phone')} message={errors.phone} /></div>
+        <div onBlur={touch('email')}><Field label="E-mail" type="email" ph="nome@gmail.com" value={family.email} onChange={(value) => updateNewFamily('email', value.trim())} inputMode="email" required /><FieldError show={show('email')} message={errors.email} /></div>
+        <Field label="Endereço" ph="Rua, número, bairro e cidade" value={family.address} onChange={(value) => updateNewFamily('address', value)} required />
+      </div>{existingFamilyLoading ? <span className="meta">Verificando se já existe um cadastro com estes dados…</span> : null}<ExistingFamilyMatch match={existingFamily} busy={busy} onStartRematricula={startMatchedRematricula} onContinueNewEnrollment={continueWithNewChild} /><div className="onboarding-child-editor"><div><h3>Alunos</h3><p>Inclua todos os filhos que deseja matricular agora.</p></div>{family.children.map((child, index) => <div className="onboarding-child-fields" key={index}>
+        <Field label="Nome completo do aluno" value={child.name} onChange={(value) => updateChild(index, 'name', value)} required />
+        <Field label="Série pretendida" type="select" options={gradeOptions} value={child.gradeId} onChange={(value) => updateChild(index, 'gradeId', value)} required />
+        <div onBlur={touch(`birth${index}`)}><Field label="Data de nascimento" ph="dd/mm/aaaa" value={child.birthDateText || isoToDateBr(child.birthDate)} onChange={(value) => updateBirthDate(index, value)} inputMode="numeric" maxLength={10} /><FieldError show={show(`birth${index}`) || (child.birthDateText || '').length === 10} message={errors.children[index]} /></div>
+        <Field label="Escola anterior (opcional)" ph="Se o aluno já estudou em outra escola" value={child.previousSchool} onChange={(value) => updateChild(index, 'previousSchool', value)} />
+        {family.children.length > 1 ? <button type="button" className="text-link" onClick={() => removeChild(index)}>Remover aluno</button> : null}</div>)}<button type="button" className="btn" onClick={() => setFamily((v) => ({ ...v, children: [...v.children, { ...emptyChild }] }))}>+ Adicionar outro filho</button></div><button className="cta" disabled={busy}>{busy ? 'Salvando…' : 'Continuar para contratos →'}</button></form>;
+    })() : null}
     {flow === 'rematricula' && step === 2 ? <form onSubmit={selectChildren} className="onboarding-form"><div className="onboarding-guardian"><strong>{data.guardian?.name}</strong><span>Estes alunos foram encontrados como vinculados ao seu cadastro.</span></div><div className="onboarding-children">{data.children?.map((child) => <label className={`onboarding-child-card${selected.includes(child.student_id) ? ' is-selected' : ''}${child.eligible === false ? ' is-unavailable' : ''}`} key={child.student_id}><input type="checkbox" disabled={child.eligible === false} checked={selected.includes(child.student_id)} onChange={(event) => setSelected((items) => event.target.checked ? [...items, child.student_id] : items.filter((id) => id !== child.student_id))} /><span><strong>{child.name}</strong><small>{child.current_grade ? `${child.current_grade} → ` : ''}{child.target_grade || 'Série a confirmar'}</small>{child.eligible === false ? <small>{child.eligibility_reason}</small> : null}</span></label>)}</div>{!eligibleChildren.length ? <div className="notice"><span>Nenhum aluno deste cadastro está pronto para a rematrícula. Fale com a secretaria para corrigir a turma ou o valor de 2027.</span></div> : null}<button className="cta" disabled={busy || !selectedEligibleChildren.length}>{busy ? 'Salvando…' : 'Confirmar alunos →'}</button></form> : null}
     {!remat && step === 3 ? <section className="onboarding-form"><div className="onboarding-guardian"><strong>Assinaturas pendentes</strong><span>Você fará uma assinatura por aluno. Depois volte para este mesmo link para acompanhar.</span></div><Field label="E-mail para confirmação das assinaturas" type="email" value={email} onChange={setEmail} required /><div className="onboarding-contract-list">{selectedChildren.map((child) => <article className="onboarding-contract-card" key={child.enrollment_id}><div><strong>{child.name}</strong><span>{child.target_grade}</span></div>{child.contract_status === 'assinada' ? <span className="badge badge--green">Assinado</span> : <button className="btn btn--primary" onClick={() => child.contract_token ? navigate(`/contrato/${child.contract_token}`) : prepareContract(child.enrollment_id)} disabled={busy}>{child.contract_token ? 'Continuar assinatura' : 'Preparar contrato'}</button>}</article>)}</div>{allSigned ? <button className="cta" onClick={() => apply({ ...data, step: 4, status: 'pagamento' })}>Seguir para pagamento →</button> : null}</section> : null}
     {!remat && data.status === 'concluida' ? <div className="notice"><span>Matrícula concluída. A cobrança ainda será enviada pela escola pelo meio escolhido.</span></div> : null}

@@ -4,24 +4,13 @@ import { Badge, Chips, Field, KpiRow } from '../components/ui';
 import DataState from '../components/DataState';
 import { useAsyncData } from '../hooks/useAsyncData';
 import { createStaffEnrollment, getEnrollments, getPublicOfferings } from '../services/data';
-import { dateTime, formatCpf, money, statusTone } from '../lib/format';
+import { dateTime, formatCpf, money, statusTone, isValidCpf } from '../lib/format';
 
 const emptyForm = {
   guardianCpf: '', guardianName: '', phone: '', email: '', address: '',
   studentName: '', gradeId: '', birthDate: '', currentSchool: '',
   relationship: '', source: 'outro', notes: ''
 };
-
-function isValidCpf(value) {
-  const cpf = String(value || '').replace(/\D/g, '');
-  if (!/^\d{11}$/.test(cpf) || /^(\d)\1{10}$/.test(cpf)) return false;
-  const digit = (length) => {
-    const total = cpf.slice(0, length - 1).split('').reduce((sum, item, index) => sum + Number(item) * (length - index), 0);
-    const result = (total * 10) % 11;
-    return result === 10 ? 0 : result;
-  };
-  return digit(10) === Number(cpf[9]) && digit(11) === Number(cpf[10]);
-}
 
 function FamilyModal({ form, onChange, onClear, onClose, onSubmit, saving, message, createdLink, onOpenFamily, gradeOptions }) {
   const update = (field) => (value) => onChange((current) => ({ ...current, [field]: value }));

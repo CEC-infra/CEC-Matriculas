@@ -55,3 +55,49 @@ export function statusTone(status) {
   if (['pre_matricula', 'formulario_iniciado', 'link_enviado'].includes(status)) return 'info';
   return 'mute';
 }
+
+/** Confere os dígitos verificadores do CPF (mesma regra de public.is_valid_cpf). */
+export function isValidCpf(value) {
+  const cpf = String(value || '').replace(/\D/g, '');
+  if (!/^\d{11}$/.test(cpf) || /^(\d)\1{10}$/.test(cpf)) return false;
+  const digit = (length) => {
+    const total = cpf.slice(0, length - 1).split('').reduce((sum, item, index) => sum + Number(item) * (length - index), 0);
+    const result = (total * 10) % 11;
+    return result === 10 ? 0 : result;
+  };
+  return digit(10) === Number(cpf[9]) && digit(11) === Number(cpf[10]);
+}
+
+export function isValidEmail(value) {
+  return /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(String(value || '').trim());
+}
+
+/** Celular ou fixo brasileiro com DDD: 10 ou 11 dígitos (sem o 55). */
+export function isValidPhoneBr(value) {
+  let digits = String(value || '').replace(/\D/g, '');
+  if (digits.startsWith('55') && digits.length > 11) digits = digits.slice(2);
+  return /^[1-9]{2}9?\d{8}$/.test(digits);
+}
+
+/** Máscara dd/mm/aaaa enquanto a pessoa digita. */
+export function maskDateBr(value) {
+  const digits = String(value || '').replace(/\D/g, '').slice(0, 8);
+  if (digits.length <= 2) return digits;
+  if (digits.length <= 4) return `${digits.slice(0, 2)}/${digits.slice(2)}`;
+  return `${digits.slice(0, 2)}/${digits.slice(2, 4)}/${digits.slice(4)}`;
+}
+
+/** dd/mm/aaaa → aaaa-mm-dd, ou null se a data não existir no calendário. */
+export function parseDateBr(value) {
+  const match = String(value || '').match(/^(\d{2})\/(\d{2})\/(\d{4})$/);
+  if (!match) return null;
+  const [, day, month, year] = match;
+  const parsed = new Date(Number(year), Number(month) - 1, Number(day));
+  if (parsed.getFullYear() !== Number(year) || parsed.getMonth() !== Number(month) - 1 || parsed.getDate() !== Number(day)) return null;
+  return `${year}-${month}-${day}`;
+}
+
+export function isoToDateBr(value) {
+  const match = String(value || '').match(/^(\d{4})-(\d{2})-(\d{2})/);
+  return match ? `${match[3]}/${match[2]}/${match[1]}` : '';
+}
