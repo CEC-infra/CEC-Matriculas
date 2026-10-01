@@ -21,15 +21,32 @@ export function formatCpf(value) {
   return `${digits.slice(0, 3)}.${digits.slice(3, 6)}.${digits.slice(6, 9)}-${digits.slice(9)}`;
 }
 
-/** Exibe telefones brasileiros do banco em um formato legível no formulário. */
+/**
+ * Exibe telefones brasileiros sem o código do país no formulário.
+ * O banco continua recebendo o número normalizado com +55.
+ */
 export function formatPhoneBr(value) {
   let digits = String(value || '').replace(/\D/g, '');
   if (digits.startsWith('55') && digits.length > 11) digits = digits.slice(2);
   digits = digits.slice(0, 11);
   if (digits.length <= 2) return digits;
-  if (digits.length <= 6) return `(${digits.slice(0, 2)}) ${digits.slice(2)}`;
-  if (digits.length <= 10) return `(${digits.slice(0, 2)}) ${digits.slice(2, 6)}-${digits.slice(6)}`;
-  return `(${digits.slice(0, 2)}) ${digits.slice(2, 7)}-${digits.slice(7)}`;
+  const areaCode = digits.slice(0, 2);
+  const localNumber = digits.slice(2);
+  if (localNumber.startsWith('9')) {
+    if (localNumber.length === 1) return `(${areaCode}) ${localNumber}`;
+    if (localNumber.length <= 5) return `(${areaCode}) ${localNumber.slice(0, 1)} ${localNumber.slice(1)}`;
+    return `(${areaCode}) ${localNumber.slice(0, 1)} ${localNumber.slice(1, 5)}-${localNumber.slice(5)}`;
+  }
+  if (localNumber.length <= 4) return `(${areaCode}) ${localNumber}`;
+  return `(${areaCode}) ${localNumber.slice(0, 4)}-${localNumber.slice(4)}`;
+}
+
+/** Oculta a maior parte de um e-mail sem depender de uma expressão regular do banco. */
+export function maskEmail(value) {
+  const email = String(value || '').trim();
+  const atIndex = email.indexOf('@');
+  if (atIndex <= 0 || atIndex === email.length - 1) return email;
+  return `${email.slice(0, Math.min(2, atIndex))}***${email.slice(atIndex)}`;
 }
 
 export function statusTone(status) {
