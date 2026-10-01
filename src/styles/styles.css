@@ -777,3 +777,14 @@ a:hover { color: var(--navy); }
 .family-sign .text-link { align-self: center; }
 .contract-total { display: flex; justify-content: space-between; align-items: center; gap: 12px; padding: 12px 14px; border-radius: var(--r-md); background: var(--surface-2); border: 1px dashed var(--line); color: var(--navy); font-size: 13.5px; }
 .contract-total strong { font-size: 16px; }
+
+/* Painel: contrato conjunto dos irmãos */
+.contract-siblings { display: flex; flex-direction: column; gap: 8px; padding: 14px; border-radius: var(--r-lg); border: 1px solid var(--line-2); background: var(--surface-2); }
+.contract-siblings > strong { color: var(--navy); font-size: 14px; }
+.contract-siblings > span { color: var(--ink-mute); font-size: 12.5px; line-height: 1.5; }
+.contract-siblings__item { display: flex; align-items: center; gap: 10px; padding: 10px 12px; border-radius: var(--r-md); background: var(--surface); border: 1px solid var(--line-2); cursor: pointer; }
+.contract-siblings__item.is-fixed { cursor: default; opacity: .85; }
+.contract-siblings__item span { display: flex; flex-direction: column; flex: 1; color: var(--navy); font-weight: 700; font-size: 13.5px; }
+.contract-siblings__item small { color: var(--ink-mute); font-weight: 500; font-size: 12px; }
+.contract-siblings__item b { color: var(--navy); }
+.contract-siblings__total { display: flex; justify-content: space-between; padding: 8px 12px; color: var(--navy); font-weight: 800; }

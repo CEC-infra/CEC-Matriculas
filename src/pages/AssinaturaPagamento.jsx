@@ -3,12 +3,16 @@ import { useNavigate, useOutletContext } from 'react-router-dom';
 import { Badge, CardHead } from '../components/ui';
 import DataState from '../components/DataState';
 import { useAsyncData } from '../hooks/useAsyncData';
-import { getContractSessions, getEnrollments, startContract } from '../services/data';
+import { getContractSessions, getEnrollments, startContract, startFamilyContract } from '../services/data';
 import { dateTime, money, statusTone } from '../lib/format';
 
 const closedStatuses = ['sem_interesse', 'opt_out', 'fora_campanha'];
 
-function ContractSetup({ enrollment, documents, installments }) {
+function ContractSetup({ enrollment, documents, installments, siblings = [] }) {
+  const available = siblings.filter((item) => !item.signed_at && !item.completed_at && !closedStatuses.includes(item.status));
+  const [included, setIncluded] = useState(() => available.map((item) => item.id));
+  const family = included.length > 0;
+  const familyTotal = [enrollment, ...available.filter((item) => included.includes(item.id))].reduce((sum, item) => sum + (Number(item.amount_cents) || 0), 0);
   const [email, setEmail] = useState(enrollment.guardian_email || '');
   const [contractLink, setContractLink] = useState('');
   const [message, setMessage] = useState('');
@@ -28,10 +32,14 @@ function ContractSetup({ enrollment, documents, installments }) {
     }
     setStarting(true); setMessage('');
     try {
-      const result = await startContract(enrollment.id, confirmationEmail);
+      const result = family
+        ? await startFamilyContract([enrollment.id, ...included], confirmationEmail)
+        : await startContract(enrollment.id, confirmationEmail);
       const url = `${window.location.origin}/contrato/${result.token}`;
       setContractLink(url);
-      setMessage('Contrato individual preparado. Copie o link para a família; o código será enviado quando ela iniciar a assinatura.');
+      setMessage(family
+        ? `Contrato conjunto preparado para ${included.length + 1} alunos. A família assina uma vez só; cada aluno fica com o seu PDF.`
+        : 'Contrato individual preparado. Copie o link para a família; o código será enviado quando ela iniciar a assinatura.');
     } catch (err) { setMessage(err.message || 'Não foi possível preparar o contrato.'); }
     finally { setStarting(false); }
   }
@@ -39,12 +47,17 @@ function ContractSetup({ enrollment, documents, installments }) {
   return <div className="contract-setup-layout">
     <div className="stack">
       <section className="card contract-setup-card">
-        <div className="contract-setup-card__head"><div><div className="card-title">Preparar contrato individual</div><div className="card-sub">Informe o e-mail que receberá a confirmação de assinatura.</div></div><span className="badge badge--info">{enrollment.student_name}</span></div>
+        <div className="contract-setup-card__head"><div><div className="card-title">{family ? 'Preparar contrato conjunto' : 'Preparar contrato individual'}</div><div className="card-sub">Informe o e-mail que receberá a confirmação de assinatura.</div></div><span className="badge badge--info">{enrollment.student_name}</span></div>
         <div className="contract-setup-card__fields">
-          <div className="notice contract-setup-card__notice"><span><strong>Pagamento após a assinatura</strong><br />Na rematrícula assinada até 31/10, o valor promocional fica em 3 parcelas: novembro, dezembro e janeiro. Depois, vale a tabela de 2027 com pagamento único em janeiro. O responsável poderá escolher Cartão ou Pix.</span></div>
+          <div className="notice contract-setup-card__notice"><span><strong>Pagamento</strong><br />Na rematrícula assinada até 31/10, vale o valor de outubro e a família escolhe: boleto ou cartão em 3x (nov, dez e jan) ou 2x (dez e jan), ou Pix à vista em janeiro. A partir de 01/11, tabela 2027 em Pix à vista em janeiro.</span></div>
           <div className="field"><label>E-mail para confirmação</label><input className="control" type="email" value={email} onChange={(event) => setEmail(event.target.value)} required /><span className="contract-setup-card__hint">O código de confirmação será enviado para este endereço quando o responsável iniciar a assinatura.</span></div>
         </div>
-        <div className="contract-setup-card__action"><div><strong>Próxima etapa</strong><span>Gerar o link individual de contrato para {enrollment.student_name}.</span></div><button type="button" className="btn btn--primary" onClick={createContract} disabled={starting || Boolean(enrollment.completed_at)}>{starting ? 'Preparando…' : 'Preparar link do contrato'}</button></div>
+        {available.length ? <div className="contract-siblings"><strong>Irmãos na mesma campanha</strong><span>Marque quem entra no mesmo link. A família assina tudo de uma vez; cada aluno continua com o seu contrato.</span>
+          <label className="contract-siblings__item is-fixed"><input type="checkbox" checked disabled /><span>{enrollment.student_name}<small>{enrollment.target_grade_name}</small></span><b>{money(enrollment.amount_cents)}</b></label>
+          {available.map((item) => <label className="contract-siblings__item" key={item.id}><input type="checkbox" checked={included.includes(item.id)} onChange={(event) => setIncluded((current) => event.target.checked ? [...current, item.id] : current.filter((id) => id !== item.id))} /><span>{item.student_name}<small>{item.target_grade_name}</small></span><b>{money(item.amount_cents)}</b></label>)}
+          {family ? <div className="contract-siblings__total"><span>Total do contrato conjunto</span><b>{money(familyTotal)}</b></div> : null}
+        </div> : null}
+        <div className="contract-setup-card__action"><div><strong>Próxima etapa</strong><span>{family ? `Gerar um link de assinatura para ${included.length + 1} alunos.` : `Gerar o link individual de contrato para ${enrollment.student_name}.`}</span></div><button type="button" className="btn btn--primary" onClick={createContract} disabled={starting || Boolean(enrollment.completed_at)}>{starting ? 'Preparando…' : family ? 'Preparar link conjunto' : 'Preparar link do contrato'}</button></div>
         {contractLink ? <div className="notice contract-setup-card__notice"><span>Link individual do contrato</span><code>{contractLink}</code><button type="button" className="btn" onClick={() => navigator.clipboard?.writeText(contractLink)}>Copiar link</button></div> : null}
         {message ? <div className="notice contract-setup-card__notice"><span>{message}</span></div> : null}
       </section>
@@ -59,7 +72,7 @@ export default function AssinaturaPagamento() {
   const navigate = useNavigate();
   const enrollments = useAsyncData(getEnrollments, []);
   const contracts = useAsyncData(getContractSessions, []);
-  if (detail) return <ContractSetup enrollment={detail.enrollment} documents={detail.documents || []} installments={detail.installments || []} />;
+  if (detail) return <ContractSetup key={detail.enrollment.id} enrollment={detail.enrollment} documents={detail.documents || []} installments={detail.installments || []} siblings={detail.siblings || []} />;
 
   const data = enrollments.data || [];
   const sessions = contracts.data || [];

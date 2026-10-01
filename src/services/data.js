@@ -44,12 +44,17 @@ export async function getEnrollments({ kind } = {}) {
 export async function getEnrollmentDetail(id) {
   const enrollment = first(await supabase.select('v_enrollment_list', q({ select: '*', id: eq(id) })));
   if (!enrollment) return null;
-  const [events, installments, documents] = await Promise.all([
+  const [events, installments, documents, family] = await Promise.all([
     supabase.select('enrollment_events', q({ select: '*', enrollment_id: eq(id), order: 'created_at.desc' })),
     supabase.select('installments', q({ select: '*', enrollment_id: eq(id), order: 'number.asc' })),
-    supabase.select('document_acceptances', q({ select: '*,document_versions(version,pages,documents(title))', enrollment_id: eq(id), order: 'created_at.asc' }))
+    supabase.select('document_acceptances', q({ select: '*,document_versions(version,pages,documents(title))', enrollment_id: eq(id), order: 'created_at.asc' })),
+    enrollment.guardian_id
+      ? supabase.select('v_enrollment_list', q({ select: '*', guardian_id: eq(enrollment.guardian_id), campaign_id: eq(enrollment.campaign_id), order: 'created_at.asc' }))
+      : Promise.resolve([])
   ]);
-  return { enrollment, events, installments, documents };
+  // Irmãos na mesma campanha: podem entrar no mesmo contrato conjunto.
+  const siblings = (family || []).filter((item) => item.id !== enrollment.id);
+  return { enrollment, events, installments, documents, siblings };
 }
 
 export async function getSettings() {
@@ -210,6 +215,13 @@ export function completeMatriculaLink(token) {
 export function startContract(enrollmentId, confirmationEmail) {
   return supabase.rpc('contract_create_session', {
     p_enrollment_id: enrollmentId,
+    p_confirmation_email: confirmationEmail || null
+  });
+}
+
+export function startFamilyContract(enrollmentIds, confirmationEmail) {
+  return supabase.rpc('contract_create_family_session', {
+    p_enrollment_ids: enrollmentIds,
     p_confirmation_email: confirmationEmail || null
   });
 }
