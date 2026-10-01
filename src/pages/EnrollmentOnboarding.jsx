@@ -4,7 +4,7 @@ import { Field, LogoBlocks } from '../components/ui';
 import DataState from '../components/DataState';
 import cecLogo from '../assets/cec-logo.png';
 import { PaymentChoiceBar, SignedContracts, ValuesStep } from '../components/RematriculaValues';
-import { formatCpf, formatPhoneBr, isValidCpf, isValidEmail, isValidPhoneBr, isoToDateBr, maskDateBr, money, parseDateBr } from '../lib/format';
+import { formatCpf, formatPhoneBr, isValidCpf, isValidEmail, isValidPhoneBr, money } from '../lib/format';
 import {
   chooseOnboardingPayment, chooseRematriculaPaymentOption, createMatriculaOnboarding, getPublicOfferings,
   identifyRematriculaOnboarding, openEnrollmentOnboarding, prepareOnboardingContract,
@@ -12,7 +12,7 @@ import {
   startRematriculaFromNewEnrollment
 } from '../services/data';
 
-const emptyChild = { name: '', birthDate: '', birthDateText: '', gradeId: '', previousSchool: '' };
+const emptyChild = { name: '', birthDate: '', birthParts: { day: '', month: '', year: '' }, gradeId: '', previousSchool: '' };
 const newFamily = { cpf: '', fullName: '', phone: '', email: '', address: '', children: [{ ...emptyChild }] };
 
 // Erros do formulário de matrícula nova. Só aparecem depois que a pessoa sai
@@ -25,15 +25,47 @@ function newFamilyErrors(family) {
     phone: !isValidPhoneBr(family.phone) ? 'Informe o WhatsApp com DDD, ex.: (33) 9 9999-9999.' : '',
     email: !isValidEmail(family.email) ? 'Informe um e-mail válido, ex.: nome@gmail.com.' : '',
     children: family.children.map((child) => {
-      if (!child.birthDateText) return '';
-      const iso = parseDateBr(child.birthDateText);
-      if (!iso) return 'Data inválida. Use dia/mês/ano, ex.: 15/03/2019.';
-      const value = new Date(`${iso}T12:00:00`);
+      const { day, month, year } = child.birthParts || {};
+      const filled = [day, month, year].filter(Boolean).length;
+      if (filled === 0) return '';
+      if (filled < 3) return 'Complete dia, mês e ano.';
+      const value = new Date(Number(year), Number(month) - 1, Number(day));
       if (value > today) return 'A data de nascimento não pode ser no futuro.';
       if (value < oldest) return 'Confira o ano de nascimento.';
       return '';
     }),
   };
+}
+
+const MONTHS = ['Janeiro', 'Fevereiro', 'Março', 'Abril', 'Maio', 'Junho', 'Julho', 'Agosto', 'Setembro', 'Outubro', 'Novembro', 'Dezembro'];
+
+// Data de nascimento em três listas: o ano começa pelo mais recente (crianças)
+// e nada depois de hoje aparece como opção.
+function BirthDateSelect({ parts, onChange }) {
+  const today = new Date();
+  const { day = '', month = '', year = '' } = parts || {};
+  const years = Array.from({ length: 21 }, (_, index) => String(today.getFullYear() - index));
+  const isCurrentYear = Number(year) === today.getFullYear();
+  const maxMonth = isCurrentYear ? today.getMonth() + 1 : 12;
+  const daysInMonth = month ? new Date(Number(year) || 2000, Number(month), 0).getDate() : 31;
+  const maxDay = isCurrentYear && Number(month) === today.getMonth() + 1 ? today.getDate() : daysInMonth;
+  function update(next) {
+    const merged = { day, month, year, ...next };
+    // Ajusta o que ficou impossível depois de trocar ano ou mês (ex.: 31 → fevereiro).
+    const mergedCurrentYear = Number(merged.year) === today.getFullYear();
+    if (mergedCurrentYear && Number(merged.month) > today.getMonth() + 1) merged.month = '';
+    const limit = merged.month
+      ? (mergedCurrentYear && Number(merged.month) === today.getMonth() + 1 ? today.getDate() : new Date(Number(merged.year) || 2000, Number(merged.month), 0).getDate())
+      : 31;
+    if (Number(merged.day) > limit) merged.day = '';
+    const iso = merged.day && merged.month && merged.year ? `${merged.year}-${merged.month.padStart(2, '0')}-${merged.day.padStart(2, '0')}` : '';
+    onChange(merged, iso);
+  }
+  return <div className="field"><label>Data de nascimento</label><div className="birth-select">
+    <select className="control" aria-label="Dia" value={day} onChange={(event) => update({ day: event.target.value })}><option value="">Dia</option>{Array.from({ length: maxDay }, (_, index) => String(index + 1)).map((item) => <option key={item} value={item}>{item}</option>)}</select>
+    <select className="control" aria-label="Mês" value={month} onChange={(event) => update({ month: event.target.value })}><option value="">Mês</option>{MONTHS.slice(0, maxMonth).map((label, index) => <option key={label} value={String(index + 1)}>{label}</option>)}</select>
+    <select className="control" aria-label="Ano" value={year} onChange={(event) => update({ year: event.target.value })}><option value="">Ano</option>{years.map((item) => <option key={item} value={item}>{item}</option>)}</select>
+  </div></div>;
 }
 
 function FieldError({ show, message }) {
@@ -217,9 +249,8 @@ export default function EnrollmentOnboarding({ initialFlow = null }) {
   function updateChild(index, key, value) {
     setFamily((current) => ({ ...current, children: current.children.map((child, childIndex) => childIndex === index ? { ...child, [key]: value } : child) }));
   }
-  function updateBirthDate(index, text) {
-    const masked = maskDateBr(text);
-    setFamily((current) => ({ ...current, children: current.children.map((child, childIndex) => childIndex === index ? { ...child, birthDateText: masked, birthDate: parseDateBr(masked) || '' } : child) }));
+  function updateBirthDate(index, parts, iso) {
+    setFamily((current) => ({ ...current, children: current.children.map((child, childIndex) => childIndex === index ? { ...child, birthParts: parts, birthDate: iso } : child) }));
   }
   function removeChild(index) { setFamily((current) => ({ ...current, children: current.children.filter((_, childIndex) => childIndex !== index) })); }
 
@@ -255,7 +286,7 @@ export default function EnrollmentOnboarding({ initialFlow = null }) {
       </div>{existingFamilyLoading ? <span className="meta">Verificando se já existe um cadastro com estes dados…</span> : null}<ExistingFamilyMatch match={existingFamily} busy={busy} onStartRematricula={startMatchedRematricula} onContinueNewEnrollment={continueWithNewChild} /><div className="onboarding-child-editor"><div><h3>Alunos</h3><p>Inclua todos os filhos que deseja matricular agora.</p></div>{family.children.map((child, index) => <div className="onboarding-child-fields" key={index}>
         <Field label="Nome completo do aluno" value={child.name} onChange={(value) => updateChild(index, 'name', value)} required />
         <Field label="Série pretendida" type="select" options={gradeOptions} value={child.gradeId} onChange={(value) => updateChild(index, 'gradeId', value)} required />
-        <div onBlur={touch(`birth${index}`)}><Field label="Data de nascimento" ph="dd/mm/aaaa" value={child.birthDateText || isoToDateBr(child.birthDate)} onChange={(value) => updateBirthDate(index, value)} inputMode="numeric" maxLength={10} /><FieldError show={show(`birth${index}`) || (child.birthDateText || '').length === 10} message={errors.children[index]} /></div>
+        <div onBlur={touch(`birth${index}`)}><BirthDateSelect parts={child.birthParts} onChange={(parts, iso) => updateBirthDate(index, parts, iso)} /><FieldError show={show(`birth${index}`)} message={errors.children[index]} /></div>
         <Field label="Escola anterior (opcional)" ph="Se o aluno já estudou em outra escola" value={child.previousSchool} onChange={(value) => updateChild(index, 'previousSchool', value)} />
         {family.children.length > 1 ? <button type="button" className="text-link" onClick={() => removeChild(index)}>Remover aluno</button> : null}</div>)}<button type="button" className="btn" onClick={() => setFamily((v) => ({ ...v, children: [...v.children, { ...emptyChild }] }))}>+ Adicionar outro filho</button></div><button className="cta" disabled={busy}>{busy ? 'Salvando…' : 'Continuar para contratos →'}</button></form>;
     })() : null}

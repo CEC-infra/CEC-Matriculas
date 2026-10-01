@@ -741,3 +741,4 @@ a:hover { color: var(--navy); }
 .contract-signed__actions { display: flex; flex-wrap: wrap; gap: 10px; }
 .contract-signed__actions > * { flex: 1 1 220px; min-height: 48px; display: inline-flex; align-items: center; justify-content: center; text-align: center; }
 .contract-signed .text-link { align-self: flex-start; }
+.birth-select { display: grid; grid-template-columns: 0.8fr 1.4fr 1fr; gap: 8px; }
