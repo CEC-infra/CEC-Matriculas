@@ -4,6 +4,7 @@ import { Badge, Chips, Field, KpiRow } from '../components/ui';
 import DataState from '../components/DataState';
 import { useAsyncData } from '../hooks/useAsyncData';
 import { createStaffEnrollment, getEnrollments, getPublicOfferings } from '../services/data';
+import AddressFields from '../components/AddressFields';
 import { dateTime, formatCpf, money, statusTone, isValidCpf } from '../lib/format';
 
 const emptyForm = {
@@ -24,7 +25,7 @@ function FamilyModal({ form, onChange, onClear, onClose, onSubmit, saving, messa
           <Field label="Nome completo do responsável" ph="Nome completo" value={form.guardianName} onChange={update('guardianName')} required />
           <Field label="WhatsApp do responsável" ph="(83) 9 0000-0000" value={form.phone} onChange={update('phone')} required />
           <Field label="E-mail do responsável" ph="nome@email.com" value={form.email} onChange={update('email')} type="email" required />
-          <div style={{ gridColumn: '1 / -1' }}><Field label="Endereço do responsável" ph="Rua, número, bairro, cidade e CEP" value={form.address} onChange={update('address')} required /></div>
+          <div style={{ gridColumn: '1 / -1' }}><AddressFields value={form.address} onChange={update('address')} /></div>
         </div></div>
         <div className="modal-section"><h3>Aluno</h3><div className="grid grid--2">
           <Field label="Nome completo do aluno/filho" ph="Nome completo" value={form.studentName} onChange={update('studentName')} required />

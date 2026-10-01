@@ -742,3 +742,23 @@ a:hover { color: var(--navy); }
 .contract-signed__actions > * { flex: 1 1 220px; min-height: 48px; display: inline-flex; align-items: center; justify-content: center; text-align: center; }
 .contract-signed .text-link { align-self: flex-start; }
 .birth-select { display: grid; grid-template-columns: 0.8fr 1.4fr 1fr; gap: 8px; }
+
+/* Endereço por partes (salvo condensado em um campo) */
+.address-fields { display: grid; grid-template-columns: repeat(6, minmax(0, 1fr)); gap: 12px 14px; }
+.address-fields__legacy { grid-column: 1 / -1; margin: 0; padding: 10px 12px; border-radius: var(--r-md); background: var(--surface-2); border: 1px dashed var(--line); color: var(--ink-body); font-size: 12.5px; line-height: 1.5; }
+.address-fields__cep { grid-column: span 2; }
+.address-fields__uf { grid-column: span 2; }
+.address-fields__city { grid-column: span 2; }
+.address-fields__street { grid-column: span 4; }
+.address-fields__number { grid-column: span 2; }
+.address-fields__district { grid-column: span 3; }
+.address-fields__complement { grid-column: span 3; }
+.address-fields__hint { display: block; margin-top: 5px; color: var(--ink-mute); font-size: 12px; }
+.address-fields .field { min-width: 0; }
+.onboarding-address { display: flex; flex-direction: column; gap: 12px; }
+.onboarding-address h3 { color: var(--navy); font-size: 15px; }
+@media (max-width: 640px) {
+  .address-fields { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .address-fields__cep, .address-fields__uf, .address-fields__number { grid-column: span 1; }
+  .address-fields__city, .address-fields__street, .address-fields__district, .address-fields__complement { grid-column: 1 / -1; }
+}

@@ -3,6 +3,7 @@ import { useNavigate, useSearchParams } from 'react-router-dom';
 import { Field, LogoBlocks } from '../components/ui';
 import DataState from '../components/DataState';
 import cecLogo from '../assets/cec-logo.png';
+import AddressFields from '../components/AddressFields';
 import { PaymentChoiceBar, SignedContracts, ValuesStep } from '../components/RematriculaValues';
 import { formatCpf, formatPhoneBr, isValidCpf, isValidEmail, isValidPhoneBr, money } from '../lib/format';
 import {
@@ -24,6 +25,7 @@ function newFamilyErrors(family) {
     cpf: !isValidCpf(family.cpf) ? (family.cpf ? 'Esse CPF não existe. Confira os 11 dígitos.' : 'Informe o CPF do responsável.') : '',
     phone: !isValidPhoneBr(family.phone) ? 'Informe o WhatsApp com DDD, ex.: (33) 9 9999-9999.' : '',
     email: !isValidEmail(family.email) ? 'Informe um e-mail válido, ex.: nome@gmail.com.' : '',
+    address: !family.address ? 'Complete o endereço: CEP, cidade, rua, número e bairro.' : '',
     children: family.children.map((child) => {
       const { day, month, year } = child.birthParts || {};
       const filled = [day, month, year].filter(Boolean).length;
@@ -188,7 +190,7 @@ export default function EnrollmentOnboarding({ initialFlow = null }) {
     event.preventDefault();
     setTriedSubmit(true);
     const errors = newFamilyErrors(family);
-    if (errors.cpf || errors.phone || errors.email || errors.children.some(Boolean)) {
+    if (errors.cpf || errors.phone || errors.email || errors.address || errors.children.some(Boolean)) {
       setNotice('Confira os campos destacados antes de continuar.');
       return;
     }
@@ -282,8 +284,8 @@ export default function EnrollmentOnboarding({ initialFlow = null }) {
         <Field label="Nome completo do responsável" value={family.fullName} onChange={(value) => updateNewFamily('fullName', value)} required />
         <div onBlur={touch('phone')}><Field label="WhatsApp" ph="(33) 9 9999-9999" value={family.phone} onChange={(value) => updateNewFamily('phone', formatPhoneBr(value))} inputMode="tel" maxLength={16} required /><FieldError show={show('phone')} message={errors.phone} /></div>
         <div onBlur={touch('email')}><Field label="E-mail" type="email" ph="nome@gmail.com" value={family.email} onChange={(value) => updateNewFamily('email', value.trim())} inputMode="email" required /><FieldError show={show('email')} message={errors.email} /></div>
-        <Field label="Endereço" ph="Rua, número, bairro e cidade" value={family.address} onChange={(value) => updateNewFamily('address', value)} required />
-      </div>{existingFamilyLoading ? <span className="meta">Verificando se já existe um cadastro com estes dados…</span> : null}<ExistingFamilyMatch match={existingFamily} busy={busy} onStartRematricula={startMatchedRematricula} onContinueNewEnrollment={continueWithNewChild} /><div className="onboarding-child-editor"><div><h3>Alunos</h3><p>Inclua todos os filhos que deseja matricular agora.</p></div>{family.children.map((child, index) => <div className="onboarding-child-fields" key={index}>
+      </div>
+      <div className="onboarding-address" onBlur={touch('address')}><h3>Endereço do responsável</h3><AddressFields key={existingFamily ? 'existente' : 'novo'} value={family.address} onChange={(value) => updateNewFamily('address', value)} /><FieldError show={show('address')} message={errors.address} /></div>{existingFamilyLoading ? <span className="meta">Verificando se já existe um cadastro com estes dados…</span> : null}<ExistingFamilyMatch match={existingFamily} busy={busy} onStartRematricula={startMatchedRematricula} onContinueNewEnrollment={continueWithNewChild} /><div className="onboarding-child-editor"><div><h3>Alunos</h3><p>Inclua todos os filhos que deseja matricular agora.</p></div>{family.children.map((child, index) => <div className="onboarding-child-fields" key={index}>
         <Field label="Nome completo do aluno" value={child.name} onChange={(value) => updateChild(index, 'name', value)} required />
         <Field label="Série pretendida" type="select" options={gradeOptions} value={child.gradeId} onChange={(value) => updateChild(index, 'gradeId', value)} required />
         <div onBlur={touch(`birth${index}`)}><BirthDateSelect parts={child.birthParts} onChange={(parts, iso) => updateBirthDate(index, parts, iso)} /><FieldError show={show(`birth${index}`)} message={errors.children[index]} /></div>
