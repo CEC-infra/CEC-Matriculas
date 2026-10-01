@@ -562,8 +562,17 @@ a:hover { color: var(--navy); }
 .contract-data-modal__section { border: 1px solid var(--line-2); background: var(--surface-2); border-radius: var(--r-lg); padding: 16px; }
 .contract-data-modal__section h3 { font-size: 16px; color: var(--navy); margin: 0 0 4px; }
 .contract-data-modal__grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 13px; margin-top: 13px; }
-.contract-data-modal__grid label { display: flex; flex-direction: column; gap: 6px; color: var(--ink-mute); font-size: 10.5px; font-weight: 800; letter-spacing: .55px; text-transform: uppercase; }
-.contract-data-modal__grid .control { width: 100%; text-transform: none; letter-spacing: 0; font-weight: 600; }
+.contract-data-modal__grid label { display: flex; flex-direction: column; gap: 7px; color: var(--ink-mute); font-size: 10.5px; font-weight: 800; letter-spacing: .55px; text-transform: uppercase; }
+.contract-data-modal__grid .control {
+  width: 100%; min-height: 46px; padding: 11px 13px;
+  border: 1px solid var(--line); border-radius: var(--r-md);
+  outline: none; background: var(--surface); color: var(--ink-body);
+  font: 600 14.5px/1.35 var(--font-body); letter-spacing: 0; text-transform: none;
+  transition: border-color .16s ease, box-shadow .16s ease, background-color .16s ease;
+}
+.contract-data-modal__grid .control::placeholder { color: var(--ink-faint); font-weight: 600; opacity: 1; }
+.contract-data-modal__grid .control:hover { border-color: #DCCAB5; }
+.contract-data-modal__grid .control:focus { border-color: var(--navy-500); background: #fff; box-shadow: 0 0 0 4px rgb(74 123 216 / .12); }
 .contract-data-modal__readonly { display: flex; flex-direction: column; justify-content: center; gap: 4px; min-height: 68px; padding: 11px 13px; border: 1px solid var(--line-2); border-radius: var(--r-md); background: #F4F7FB; }
 .contract-data-modal__readonly span { color: var(--ink-mute); font-size: 10.5px; font-weight: 800; letter-spacing: .55px; text-transform: uppercase; }
 .contract-data-modal__readonly strong { color: var(--navy); font-size: 14px; }
