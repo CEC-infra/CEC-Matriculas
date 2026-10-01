@@ -730,3 +730,14 @@ a:hover { color: var(--navy); }
 .values-done span, .values-checkout span { color: var(--ink-body); font-size: 13px; line-height: 1.5; }
 .values-checkout { display: flex; flex-direction: column; gap: 8px; padding: 16px; border: 1px dashed var(--line); border-radius: var(--r-lg); }
 .values-checkout strong { color: var(--navy); }
+
+/* Assinatura do contrato */
+.cta:disabled { background: #9AA1AE; color: #F4F5F7; cursor: not-allowed; box-shadow: none; }
+.contract-signature__hint { color: var(--ink-mute); font-size: 12px; text-align: center; }
+.contract-signed { display: flex; flex-direction: column; gap: 14px; padding: 20px; border-radius: var(--r-xl); background: var(--green-soft); border: 1px solid var(--green-line); }
+.contract-signed__head { display: flex; flex-direction: column; gap: 4px; }
+.contract-signed__head strong { color: var(--green-ink); font-size: 18px; }
+.contract-signed__head span { color: var(--ink-body); font-size: 13px; line-height: 1.5; }
+.contract-signed__actions { display: flex; flex-wrap: wrap; gap: 10px; }
+.contract-signed__actions > * { flex: 1 1 220px; min-height: 48px; display: inline-flex; align-items: center; justify-content: center; text-align: center; }
+.contract-signed .text-link { align-self: flex-start; }
