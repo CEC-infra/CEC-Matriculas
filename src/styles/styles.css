@@ -762,3 +762,18 @@ a:hover { color: var(--navy); }
   .address-fields__cep, .address-fields__uf, .address-fields__number { grid-column: span 1; }
   .address-fields__city, .address-fields__street, .address-fields__district, .address-fields__complement { grid-column: 1 / -1; }
 }
+
+/* Assinatura conjunta dos irmãos */
+.family-sign { display: flex; flex-direction: column; gap: 14px; padding: 18px; border-radius: var(--r-xl); border: 1.5px solid #F6C9A2; background: linear-gradient(135deg, #FFF3E8, #FFF9F2); }
+.family-sign__head { display: flex; flex-direction: column; gap: 4px; }
+.family-sign__head strong { color: var(--navy); font-size: 17px; }
+.family-sign__head span { color: var(--ink-body); font-size: 13px; line-height: 1.5; }
+.family-sign ul { list-style: none; margin: 0; padding: 0; border: 1px solid var(--line-2); border-radius: var(--r-lg); background: var(--surface); overflow: hidden; }
+.family-sign li { display: flex; justify-content: space-between; align-items: center; gap: 12px; padding: 11px 14px; font-size: 13.5px; color: var(--navy); }
+.family-sign li + li { border-top: 1px solid var(--line-2); }
+.family-sign li span { display: flex; flex-direction: column; gap: 2px; font-weight: 700; }
+.family-sign li small { color: var(--ink-mute); font-weight: 500; font-size: 12px; }
+.family-sign__total { background: var(--surface-2); font-weight: 800; }
+.family-sign .text-link { align-self: center; }
+.contract-total { display: flex; justify-content: space-between; align-items: center; gap: 12px; padding: 12px 14px; border-radius: var(--r-md); background: var(--surface-2); border: 1px dashed var(--line); color: var(--navy); font-size: 13.5px; }
+.contract-total strong { font-size: 16px; }
