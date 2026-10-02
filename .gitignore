@@ -25,3 +25,4 @@ importacao/
 
 # Artefatos temporários de revisão e conversão local
 tmp/
+supabase/functions/deno.lock
