@@ -126,26 +126,38 @@ Deno.serve(async (request) => {
       if (guardianError) throw guardianError;
       if (!guardian.cpf) return json({ error: "O CPF do responsável é necessário para gerar a cobrança" }, 422);
 
+      // Cliente no Asaas: reaproveita o ID salvo se ele existir neste ambiente
+      // (sandbox e produção têm IDs diferentes), senão localiza pelo CPF e só
+      // então cria. Cliente encontrado recebe os dados atuais do responsável.
+      const phone = String(guardian.phone || "").replace(/\D/g, "").replace(/^55/, "");
+      const customerData = {
+        name: guardian.full_name,
+        cpfCnpj: String(guardian.cpf).replace(/\D/g, ""),
+        email: guardian.email || undefined,
+        mobilePhone: phone || undefined,
+        externalReference: guardian.id,
+        ...splitAddress(guardian.address),
+      };
       let customerId = guardian.asaas_customer_id as string | null;
-      if (!customerId) {
-        const found = await asaas(`/customers?cpfCnpj=${guardian.cpf}`);
-        customerId = found?.data?.[0]?.id || null;
+      let customerOrigin = "salvo";
+      if (customerId) {
+        const saved = await asaas(`/customers/${customerId}`).catch(() => null);
+        if (!saved?.id || saved.deleted) customerId = null;
       }
       if (!customerId) {
-        const phone = String(guardian.phone || "").replace(/\D/g, "").replace(/^55/, "");
-        const created = await asaas("/customers", {
-          method: "POST",
-          body: JSON.stringify({
-            name: guardian.full_name,
-            cpfCnpj: guardian.cpf,
-            email: guardian.email || undefined,
-            mobilePhone: phone || undefined,
-            externalReference: guardian.id,
-            ...splitAddress(guardian.address),
-          }),
-        });
+        const found = await asaas(`/customers?cpfCnpj=${customerData.cpfCnpj}`);
+        customerId = (found?.data || []).find((item: { deleted?: boolean }) => !item.deleted)?.id || null;
+        customerOrigin = "localizado_pelo_cpf";
+      }
+      if (customerId) {
+        await asaas(`/customers/${customerId}`, { method: "PUT", body: JSON.stringify(customerData) })
+          .catch((error) => console.error("Não foi possível atualizar o cliente no Asaas", error));
+      } else {
+        const created = await asaas("/customers", { method: "POST", body: JSON.stringify(customerData) });
         customerId = created.id;
+        customerOrigin = "criado";
       }
+      console.log("Cliente Asaas", customerOrigin, customerId);
       if (customerId !== guardian.asaas_customer_id) {
         await supabase.from("guardians").update({ asaas_customer_id: customerId }).eq("id", guardian.id);
       }
@@ -251,7 +263,7 @@ Deno.serve(async (request) => {
       for (const enrollmentId of enrollmentIds) {
         await supabase.from("enrollment_events").insert({
           enrollment_id: enrollmentId, code: "PAYMENT_CHECKOUT_CREATED", title: "Cobrança gerada no Asaas",
-          body: `Cobrança ${method} gerada para a família.`, actor: "sistema", metadata: { method, due_dates: dueDates, card_total_cents: cardTotal },
+          body: `Cobrança ${method} gerada para a família.`, actor: "sistema", metadata: { method, due_dates: dueDates, card_total_cents: cardTotal, asaas_customer_id: customerId, asaas_customer: customerOrigin },
         });
       }
     }
