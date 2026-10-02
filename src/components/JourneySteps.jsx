@@ -147,7 +147,7 @@ export function BillingStep({ data, busy, onConfirm }) {
     onboardingCardQuote(data.token).then(setCardQuote).catch(() => setCardQuote(null));
   }, [method, cardQuote, data.token]);
   return <section className="onboarding-form">
-    <div className="values-done"><strong>Contrato{children.length > 1 ? 's' : ''} assinado{children.length > 1 ? 's' : ''} ✓</strong><span>Falta só escolher como pagar. A cobrança é gerada na hora.</span></div>
+    <div className="values-done"><strong>Contrato{children.length > 1 ? 's' : ''} assinado{children.length > 1 ? 's' : ''} ✓</strong><span>Falta só escolher como pagar. O link de pagamento chega depois, pelo WhatsApp.</span></div>
     <DownloadContracts data={data} />
     <div className="values-config">
       <h3>Como você quer pagar?</h3>
@@ -167,7 +167,7 @@ export function BillingStep({ data, busy, onConfirm }) {
       </div>}
       {method === 'cartao' ? <p className="meta">O cartão é cobrado na hora, nas parcelas escolhidas no plano. A taxa do parcelamento é paga por quem usa o cartão.</p> : null}
     </div>
-    <button className="cta" disabled={busy || (method === 'cartao' && !cardQuote)} onClick={() => onConfirm(method)}>{busy ? 'Gerando cobrança…' : 'Gerar pagamento →'}</button>
+    <button className="cta" disabled={busy || (method === 'cartao' && !cardQuote)} onClick={() => onConfirm(method)}>{busy ? 'Salvando…' : 'Confirmar forma de pagamento →'}</button>
   </section>;
 }
 
@@ -183,12 +183,15 @@ function CopyButton({ value, label }) {
 
 const chargeStatus = { pago: ['Pago', 'badge--green'], vencido: ['Vencido', 'badge--red'], pendente: ['A pagar', ''] };
 
-export function PaymentStep({ data, busy, onRetry, onChangeMethod }) {
+export function PaymentStep({ data, onChangeMethod }) {
   const charges = data.charges || [];
   const generated = charges.some((item) => item.payment_url);
   const method = methodInfo[data.billing_method]?.label || '';
+  const done = data.flow === 'rematricula' ? 'Rematrícula concluída ✅' : 'Matrícula concluída ✅';
   return <section className="onboarding-form">
-    <div className="onboarding-guardian"><strong>Pagamento{method ? ` · ${method}` : ''}</strong><span>{generated ? 'Toque em Pagar em cada vencimento. A confirmação chega aqui sozinha.' : 'Estamos preparando sua cobrança.'}</span></div>
+    {generated
+      ? <div className="onboarding-guardian"><strong>Pagamento{method ? ` · ${method}` : ''}</strong><span>Toque em Pagar em cada vencimento. A confirmação chega aqui sozinha.</span></div>
+      : <div className="values-done"><strong>{done}</strong><span>Falta só o pagamento{method ? ` (${method.toLowerCase()})` : ''}. Vamos te enviar o link de pagamento pelo WhatsApp em breve. Não precisa fazer mais nada agora.</span></div>}
     <div className="payment-list">
       {charges.map((item, index) => {
         const [label, tone] = chargeStatus[item.status] || chargeStatus.pendente;
@@ -206,7 +209,6 @@ export function PaymentStep({ data, busy, onRetry, onChangeMethod }) {
         </article>;
       })}
     </div>
-    {!generated ? <div className="notice"><span>O pagamento online ainda não foi liberado pela escola. Assim que estiver disponível, os links aparecem aqui e também enviamos pelo WhatsApp.</span><button type="button" className="btn" onClick={onRetry} disabled={busy}>{busy ? 'Tentando…' : 'Tentar gerar agora'}</button></div> : null}
     {!generated && onChangeMethod ? <button type="button" className="text-link" onClick={onChangeMethod}>Trocar forma de pagamento</button> : null}
     <DownloadContracts data={data} />
   </section>;
