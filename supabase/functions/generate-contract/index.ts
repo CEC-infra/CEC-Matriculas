@@ -1,5 +1,5 @@
 import "jsr:@supabase/functions-js/edge-runtime.d.ts";
-import { createClient } from "npm:@supabase/supabase-js@2";
+import { createClient, type SupabaseClient } from "npm:@supabase/supabase-js@2";
 import { PDFDocument, StandardFonts, rgb } from "npm:pdf-lib@1.17.1";
 
 const corsHeaders = {
@@ -23,7 +23,7 @@ function decodeBase64(value: string) {
 }
 
 async function sha256(bytes: Uint8Array) {
-  const digest = await crypto.subtle.digest("SHA-256", bytes);
+  const digest = await crypto.subtle.digest("SHA-256", bytes as BufferSource);
   return Array.from(new Uint8Array(digest)).map((byte) => byte.toString(16).padStart(2, "0")).join("");
 }
 
@@ -84,7 +84,7 @@ async function applySignature(pdfBytes: Uint8Array, signatureData: string) {
   return pdf.save();
 }
 
-async function getSession(supabase: ReturnType<typeof createClient>, token: string) {
+async function getSession(supabase: SupabaseClient, token: string) {
   const { data, error } = await supabase
     .from("contract_sessions")
     .select("id, guardian_id, campaign_id, status, expires_at")
@@ -96,7 +96,7 @@ async function getSession(supabase: ReturnType<typeof createClient>, token: stri
   return data;
 }
 
-async function servePdf(supabase: ReturnType<typeof createClient>, token: string, enrollmentId: string, download = false) {
+async function servePdf(supabase: SupabaseClient, token: string, enrollmentId: string, download = false) {
   const session = await getSession(supabase, token);
   if (!session) return json({ error: "Contrato indisponível" }, 404);
   const { data: acceptance, error } = await supabase
@@ -129,7 +129,7 @@ async function servePdf(supabase: ReturnType<typeof createClient>, token: string
   });
 }
 
-async function generate(supabase: ReturnType<typeof createClient>, token: string, templateBase64: string) {
+async function generate(supabase: SupabaseClient, token: string, templateBase64: string) {
   const session = await getSession(supabase, token);
   if (!session) return json({ error: "Contrato indisponível" }, 404);
   if (templateBase64.length < 1000 || templateBase64.length > 1_000_000) return json({ error: "Modelo de contrato inválido" }, 422);
@@ -210,7 +210,7 @@ async function generate(supabase: ReturnType<typeof createClient>, token: string
   return json({ ok: true, files: files.map((file) => ({ enrollment_id: file.enrollment_id, sha256: file.hash })) });
 }
 
-async function sign(supabase: ReturnType<typeof createClient>, token: string, signerName: string, signatureData: string, accepted: boolean, request: Request) {
+async function sign(supabase: SupabaseClient, token: string, signerName: string, signatureData: string, accepted: boolean, request: Request) {
   if (!accepted) return json({ error: "Confirme a leitura e o aceite do contrato" }, 422);
   if (signerName.trim().length < 3) return json({ error: "Informe o nome completo de quem assina" }, 422);
   if (!/^data:image\/(png|jpeg);base64,/.test(signatureData) || signatureData.length < 100 || signatureData.length > 500_000) {
