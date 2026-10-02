@@ -73,7 +73,14 @@ async function applySignature(pdfBytes: Uint8Array, signatureData: string) {
   const height = image.height * scale;
   page.drawImage(image, { x: 212 + (maxWidth - width) / 2, y: 379 + (maxHeight - height) / 2, width, height });
   const font = await pdf.embedFont(StandardFonts.Helvetica);
-  drawField(page, font, signedDate(), 453, 462, 78);
+  // O modelo já traz "____/____/____": dia, mês e ano vão centralizados em
+  // cada espaço, sem escrever por cima das barras.
+  const blanks = [[436, 461], [465.5, 491], [495.5, 520.5]];
+  signedDate().split("/").forEach((part, index) => {
+    const [start, end] = blanks[index];
+    const width = font.widthOfTextAtSize(part, 8.2);
+    drawField(page, font, part, start + (end - start - width) / 2, 463, end - start);
+  });
   return pdf.save();
 }
 

@@ -11,19 +11,71 @@ function shiftLabel(shift) {
   return ({ manha: 'Matutino', tarde: 'Vespertino', integral: 'Integral' })[shift] || 'Turno da turma';
 }
 
+// O Chrome do Android não mostra PDF dentro de iframe (só um botão "Abrir"),
+// então as páginas são desenhadas em canvas pelo pdf.js, igual em qualquer aparelho.
+async function loadPdfjs() {
+  const [pdfjs, worker] = await Promise.all([
+    import('pdfjs-dist/legacy/build/pdf.mjs'),
+    import('pdfjs-dist/legacy/build/pdf.worker.min.mjs?url')
+  ]);
+  pdfjs.GlobalWorkerOptions.workerSrc = worker.default;
+  return pdfjs;
+}
+
+function PdfPages({ url, title }) {
+  const containerRef = useRef(null);
+  const [status, setStatus] = useState('loading');
+
+  useEffect(() => {
+    const container = containerRef.current;
+    if (!container || !url) return undefined;
+    let cancelled = false;
+    let task = null;
+    setStatus('loading');
+    container.replaceChildren();
+    (async () => {
+      const pdfjs = await loadPdfjs();
+      if (cancelled) return;
+      task = pdfjs.getDocument({ url });
+      const pdf = await task.promise;
+      // Renderiza com folga de resolução para continuar nítido no zoom de pinça.
+      const cssWidth = container.clientWidth || 600;
+      const ratio = Math.min(3, (window.devicePixelRatio || 1) * 1.5);
+      for (let number = 1; number <= pdf.numPages; number += 1) {
+        if (cancelled) return;
+        const page = await pdf.getPage(number);
+        const base = page.getViewport({ scale: 1 });
+        const viewport = page.getViewport({ scale: (cssWidth / base.width) * ratio });
+        const canvas = document.createElement('canvas');
+        canvas.width = Math.floor(viewport.width);
+        canvas.height = Math.floor(viewport.height);
+        canvas.className = 'contract-pdf__page';
+        canvas.setAttribute('aria-label', `${title} — página ${number} de ${pdf.numPages}`);
+        container.appendChild(canvas);
+        await page.render({ canvasContext: canvas.getContext('2d'), viewport }).promise;
+        if (number === 1 && !cancelled) setStatus('ready');
+      }
+    })().catch((error) => {
+      if (!cancelled) { console.error(error); setStatus('error'); }
+    });
+    return () => { cancelled = true; task?.destroy(); };
+  }, [url, title]);
+
+  return <div className="contract-pdf" role="document" aria-label={title} aria-busy={status === 'loading'}>
+    {status === 'loading' && <div className="contract-pdf__status">Carregando o contrato…</div>}
+    {status === 'error' && <div className="contract-pdf__status">Não foi possível mostrar o contrato aqui. Use o botão “Abrir com zoom”.</div>}
+    <div ref={containerRef} className="contract-pdf__pages" />
+  </div>;
+}
+
 function ContractPdfPanel({ token, enrollment }) {
   const pdfUrl = contractPdfUrl(token, enrollment.id);
   return <article className="contract-pdf-panel">
     <header className="contract-pdf-panel__head">
-      <div><strong>Contrato de {enrollment.student_name}</strong><span>Use os controles do PDF para ampliar e deslize para ler todas as páginas.</span></div>
+      <div><strong>Contrato de {enrollment.student_name}</strong><span>Deslize para ler todas as páginas e use o gesto de pinça para ampliar.</span></div>
       <a className="btn" href={pdfUrl} target="_blank" rel="noreferrer">Abrir com zoom</a>
     </header>
-    <iframe
-      title={`Contrato em PDF — ${enrollment.student_name}`}
-      src={`${pdfUrl}#view=FitH&toolbar=1&navpanes=0`}
-      className="contract-pdf"
-      allowFullScreen
-    />
+    <PdfPages url={pdfUrl} title={`Contrato em PDF — ${enrollment.student_name}`} />
   </article>;
 }
 

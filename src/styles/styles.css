@@ -521,7 +521,10 @@ a:hover { color: var(--navy); }
 .contract-pdf-panel__head > div { display: flex; min-width: 0; flex-direction: column; gap: 3px; }
 .contract-pdf-panel__head strong { color: var(--navy); font-size: 14px; }
 .contract-pdf-panel__head span { line-height: 1.4; }
-.contract-pdf { display: block; width: 100%; height: clamp(620px, 82vh, 980px); border: 0; background: #C9D2DD; }
+.contract-pdf { position: relative; display: block; width: 100%; height: clamp(620px, 82vh, 980px); overflow-y: auto; -webkit-overflow-scrolling: touch; border: 0; background: #C9D2DD; }
+.contract-pdf__pages { display: flex; flex-direction: column; gap: 10px; padding: 10px; }
+.contract-pdf__page { display: block; width: 100%; height: auto; background: #fff; box-shadow: 0 2px 8px rgba(18, 45, 76, .18); }
+.contract-pdf__status { position: absolute; inset: 0; display: grid; place-items: center; padding: 24px; text-align: center; color: var(--ink-mute); font-size: 13px; }
 .contract-pdf-unavailable { width: 100%; min-height: 390px; border: 1px solid var(--line-2); border-radius: var(--r-lg); background: var(--surface-2); }
 .contract-pdf-unavailable { display: grid; place-items: center; padding: 24px; text-align: center; color: var(--ink-mute); font-size: 13px; }
 .contract-setup-layout { display: grid; grid-template-columns: minmax(0, 1.12fr) minmax(360px, .88fr); gap: clamp(18px, 2vw, 28px); align-items: start; }
