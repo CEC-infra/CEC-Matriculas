@@ -808,6 +808,8 @@ a:hover { color: var(--navy); }
 .payment-list article > div { display: flex; flex-direction: column; flex: 1; gap: 2px; }
 .payment-list strong { color: var(--navy); font-size: 14px; }
 .payment-list span { color: var(--ink-mute); font-size: 12.5px; }
+.payment-list article { flex-wrap: wrap; }
+.payment-list article > .payment-shortcuts { display: flex; flex-direction: row; flex-wrap: wrap; gap: 4px 16px; flex-basis: 100%; padding-top: 8px; border-top: 1px dashed var(--line-2); }
 .payment-list b { color: var(--navy); font-size: 15px; }
 .badge--red { background: #FDECEA; color: var(--red); }
 .badge--green { background: var(--green-soft); color: var(--green-ink); border-color: var(--green-line); }

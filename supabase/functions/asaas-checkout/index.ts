@@ -4,9 +4,11 @@ import { createClient } from "npm:@supabase/supabase-js@2";
 // Gera as cobranças da família no Asaas depois que ela assina e escolhe a
 // forma de pagamento. Uma cobrança por vencimento cobre a parcela de todos os
 // irmãos (o webhook baixa todas as parcelas ligadas àquela cobrança).
-// Cartão parcelado vira uma cobrança parcelada do Asaas (installmentCount),
-// para o cartão ser cobrado em parcelas. Idempotente: só cria cobrança para
-// parcela que ainda não tem provider_charge_id.
+// Cartão (até 3x) vira uma cobrança parcelada do Asaas (installmentCount),
+// com a taxa do cartão somada ao valor (card_fees): quem paga o parcelamento
+// é a família. Boleto e Pix guardam PDF, linha digitável e Pix copia e cola
+// para a página e a IA mandarem sem a família precisar abrir o Asaas.
+// Idempotente: só cria cobrança para parcela sem provider_charge_id.
 //
 // Segredos: ASAAS_API_KEY e, opcionalmente, ASAAS_BASE_URL
 // (padrão produção; sandbox: https://api-sandbox.asaas.com/v3).
@@ -50,6 +52,15 @@ function splitAddress(value: string | null) {
   return { address: street, addressNumber: number, complement: complement || undefined, province: district, postalCode: cep.replace(/\D/g, "") };
 }
 
+function money(cents: number) {
+  return (cents / 100).toLocaleString("pt-BR", { style: "currency", currency: "BRL" });
+}
+
+function shortDate(value: string) {
+  const [, month, day] = value.split("-");
+  return `${day}/${month}`;
+}
+
 function localToday() {
   return new Intl.DateTimeFormat("en-CA", { timeZone: "America/Sao_Paulo" }).format(new Date());
 }
@@ -76,7 +87,7 @@ Deno.serve(async (request) => {
 
     const { data: session, error: sessionError } = await supabase
       .from("enrollment_onboarding_sessions")
-      .select("id, guardian_id, status")
+      .select("id, guardian_id, campaign_id, status, token, flow")
       .eq("token", token.trim())
       .neq("status", "cancelada")
       .maybeSingle();
@@ -149,29 +160,52 @@ Deno.serve(async (request) => {
       const description = (index: number) =>
         `CEC Matrícula 2027 — parcela ${index + 1}/${dueDates.length}${names.length ? ` — ${names.join(", ")}` : ""}`;
       const reais = (cents: number) => Math.round(cents) / 100;
-      const save = async (dueDate: string, payment: { id: string; invoiceUrl?: string }) => {
+      // Linha digitável e Pix: chamadas extras do Asaas. Se falharem, a
+      // cobrança continua válida pelo invoiceUrl; só não sai o atalho.
+      const paymentDetails = async (payment: { id: string; billingType?: string }) => {
+        const details: { boleto_line?: string; pix_code?: string } = {};
+        if (billingType === "BOLETO") {
+          details.boleto_line = await asaas(`/payments/${payment.id}/identificationField`)
+            .then((body) => body?.identificationField || undefined).catch(() => undefined);
+        }
+        if (billingType === "BOLETO" || billingType === "PIX") {
+          details.pix_code = await asaas(`/payments/${payment.id}/pixQrCode`)
+            .then((body) => body?.payload || undefined).catch(() => undefined);
+        }
+        return details;
+      };
+      const save = async (dueDate: string, payment: { id: string; invoiceUrl?: string; bankSlipUrl?: string }, details = {}) => {
         const ids = groups.get(dueDate)!.map((row) => row.id);
         const { error } = await supabase.from("installments")
-          .update({ provider: "asaas", provider_charge_id: payment.id, payment_url: payment.invoiceUrl || null })
+          .update({
+            provider: "asaas", provider_charge_id: payment.id, payment_url: payment.invoiceUrl || null,
+            bank_slip_url: payment.bankSlipUrl || null, ...details,
+          })
           .in("id", ids);
         if (error) throw error;
       };
 
-      if (billingType === "CREDIT_CARD" && dueDates.length > 1) {
-        const total = dueDates.reduce((sum, due) => sum + groups.get(due)!.reduce((acc, row) => acc + row.amount_cents, 0), 0);
+      let cardTotal: number | null = null;
+      if (billingType === "CREDIT_CARD") {
+        const net = dueDates.reduce((sum, due) => sum + groups.get(due)!.reduce((acc, row) => acc + row.amount_cents, 0), 0);
+        const count = Math.min(3, dueDates.length);
+        const { data: total, error: feeError } = await supabase.rpc("card_total_cents", { p_net_cents: net, p_installments: count });
+        if (feeError) throw feeError;
+        cardTotal = Number(total) || net;
         const first = await asaas("/payments", {
           method: "POST",
           body: JSON.stringify({
-            customer: customerId, billingType, installmentCount: dueDates.length, totalValue: reais(total),
-            dueDate: dueDates[0] < today ? today : dueDates[0],
-            description: `CEC Matrícula 2027 — ${dueDates.length}x no cartão${names.length ? ` — ${names.join(", ")}` : ""}`,
+            customer: customerId, billingType,
+            ...(count > 1 ? { installmentCount: count, totalValue: reais(cardTotal) } : { value: reais(cardTotal) }),
+            dueDate: today,
+            description: `CEC Matrícula 2027 — ${count > 1 ? `${count}x no cartão` : "cartão à vista"} (inclui taxa do cartão)${names.length ? ` — ${names.join(", ")}` : ""}`,
             externalReference: session.id,
           }),
         });
         const list = first.installment ? await asaas(`/payments?installment=${first.installment}&limit=20`) : { data: [first] };
         const payments = [...(list?.data || [])].sort((a, b) => String(a.dueDate).localeCompare(String(b.dueDate)));
         for (let index = 0; index < dueDates.length; index += 1) {
-          const payment = payments[index] || first;
+          const payment = payments[Math.min(index, payments.length - 1)] || first;
           await save(dueDates[index], { id: payment.id, invoiceUrl: payment.invoiceUrl || first.invoiceUrl });
         }
       } else {
@@ -187,14 +221,37 @@ Deno.serve(async (request) => {
               externalReference: session.id,
             }),
           });
-          await save(due, payment);
+          await save(due, payment, await paymentDetails(payment));
         }
       }
+
+      // Aviso pelo WhatsApp via fila (nada vai direto para a UAZAPI): a
+      // família recebe os vencimentos e o link da jornada, onde estão os
+      // botões de pagar. Pelo chat, a IA manda o PDF ou o Pix quando pedirem.
+      const journeyBase = (Deno.env.get("JOURNEY_BASE_URL") || "https://cecnanuque.com.br").replace(/\/$/, "");
+      const lines = billingType === "CREDIT_CARD"
+        ? [`💳 Cartão: *${money(cardTotal || 0)}*${dueDates.length > 1 ? ` em ${Math.min(3, dueDates.length)}x` : ""} (inclui a taxa do cartão).`]
+        : dueDates.map((due, index) => {
+          const value = groups.get(due)!.reduce((acc, row) => acc + row.amount_cents, 0);
+          return `• ${dueDates.length > 1 ? `${index + 1}ª parcela` : "Parcela única"}: *${money(value)}* — vence ${shortDate(due < today ? today : due)}`;
+        });
+      const label = ({ BOLETO: "boleto", PIX: "Pix", CREDIT_CARD: "cartão" } as Record<string, string>)[billingType];
+      await supabase.from("message_queue").insert({
+        campaign_id: session.campaign_id,
+        guardian_id: guardian.id,
+        enrollment_id: enrollmentIds[0] || null,
+        body: [
+          `Sua cobrança no ${label} já está pronta ✅`,
+          ...lines,
+          `Para pagar, abra: ${journeyBase}/${session.flow === "rematricula" ? "rematricula" : "matricula"}?j=${encodeURIComponent(session.token)}&f=${session.flow || "matricula_nova"}`,
+          billingType === "CREDIT_CARD" ? "" : `Se preferir, me peça aqui que eu mando o ${billingType === "PIX" ? "Pix copia e cola" : "boleto em PDF"}.`,
+        ].filter(Boolean).join("\n"),
+      }).then(({ error }) => { if (error) console.error("Falha ao enfileirar aviso de cobrança", error); });
 
       for (const enrollmentId of enrollmentIds) {
         await supabase.from("enrollment_events").insert({
           enrollment_id: enrollmentId, code: "PAYMENT_CHECKOUT_CREATED", title: "Cobrança gerada no Asaas",
-          body: `Cobrança ${method} gerada para a família.`, actor: "sistema", metadata: { method, due_dates: dueDates },
+          body: `Cobrança ${method} gerada para a família.`, actor: "sistema", metadata: { method, due_dates: dueDates, card_total_cents: cardTotal },
         });
       }
     }

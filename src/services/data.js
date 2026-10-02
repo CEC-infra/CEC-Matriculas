@@ -164,6 +164,10 @@ export function chooseOnboardingBilling(token, method) {
   return supabase.rpc('onboarding_choose_billing', { p_token: token, p_method: method });
 }
 
+export function onboardingCardQuote(token) {
+  return supabase.rpc('onboarding_card_quote', { p_token: token });
+}
+
 export function createAsaasCheckout(token) {
   return supabase.invokeFunction('asaas-checkout', { token });
 }

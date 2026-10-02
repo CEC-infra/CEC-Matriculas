@@ -1,10 +1,10 @@
-import { useState } from 'react';
-import { contractPdfUrl, downloadFiles } from '../services/data';
+import { useEffect, useState } from 'react';
+import { contractPdfUrl, downloadFiles, onboardingCardQuote } from '../services/data';
 import { date, money } from '../lib/format';
 
 const methodInfo = {
   boleto: { label: 'Boleto', hint: 'Um boleto para cada vencimento.' },
-  cartao: { label: 'Cartão de crédito', hint: 'Parcelado no cartão, sem acréscimo no valor.' },
+  cartao: { label: 'Cartão de crédito', hint: 'Em até 3x no cartão, com a taxa do cartão.' },
   pix: { label: 'Pix', hint: 'Um Pix para cada vencimento, com QR Code.' },
 };
 
@@ -141,6 +141,11 @@ export function BillingStep({ data, busy, onConfirm }) {
   const schedule = (data.charges || []).length
     ? data.charges.map((item) => ({ amount: Number(item.amount_cents), due: item.due_date }))
     : familySchedule(children, plan);
+  const [cardQuote, setCardQuote] = useState(null);
+  useEffect(() => {
+    if (method !== 'cartao' || cardQuote || !data.token) return;
+    onboardingCardQuote(data.token).then(setCardQuote).catch(() => setCardQuote(null));
+  }, [method, cardQuote, data.token]);
   return <section className="onboarding-form">
     <div className="values-done"><strong>Contrato{children.length > 1 ? 's' : ''} assinado{children.length > 1 ? 's' : ''} ✓</strong><span>Falta só escolher como pagar. A cobrança é gerada na hora.</span></div>
     <DownloadContracts data={data} />
@@ -151,12 +156,29 @@ export function BillingStep({ data, busy, onConfirm }) {
           <strong>{info.label}</strong><small>{info.hint}</small>
         </button>)}
       </div>
-      <div className="values-schedule">
+      {method === 'cartao' ? <div className="values-schedule">
+        {cardQuote ? <>
+          <div><span>Valor dos contratos</span><b>{money(cardQuote.net_cents)}</b></div>
+          <div><span>Taxa do cartão{cardQuote.installments > 1 ? ` em ${cardQuote.installments}x` : ''}</span><b>{money(cardQuote.fee_cents)}</b></div>
+          <div className="values-schedule__total"><span>{cardQuote.installments > 1 ? `${cardQuote.installments}x de ${money(cardQuote.installment_cents)}` : 'Total no cartão'}</span><b>{money(cardQuote.total_cents)}</b></div>
+        </> : <div><span>Calculando o valor no cartão…</span></div>}
+      </div> : <div className="values-schedule">
         {schedule.map((item, index) => <div key={item.due || index}><span>{schedule.length > 1 ? `${index + 1}ª parcela` : 'Parcela única'} · vence {date(item.due)}</span><b>{money(item.amount)}</b></div>)}
-      </div>
+      </div>}
+      {method === 'cartao' ? <p className="meta">O cartão é cobrado na hora, nas parcelas escolhidas no plano. A taxa do parcelamento é paga por quem usa o cartão.</p> : null}
     </div>
-    <button className="cta" disabled={busy} onClick={() => onConfirm(method)}>{busy ? 'Gerando cobrança…' : 'Gerar pagamento →'}</button>
+    <button className="cta" disabled={busy || (method === 'cartao' && !cardQuote)} onClick={() => onConfirm(method)}>{busy ? 'Gerando cobrança…' : 'Gerar pagamento →'}</button>
   </section>;
+}
+
+function CopyButton({ value, label }) {
+  const [copied, setCopied] = useState(false);
+  async function copy() {
+    try { await navigator.clipboard.writeText(value); } catch { window.prompt(label, value); return; }
+    setCopied(true);
+    window.setTimeout(() => setCopied(false), 2000);
+  }
+  return <button type="button" className="text-link" onClick={copy}>{copied ? 'Copiado ✓' : label}</button>;
 }
 
 const chargeStatus = { pago: ['Pago', 'badge--green'], vencido: ['Vencido', 'badge--red'], pendente: ['A pagar', ''] };
@@ -173,9 +195,14 @@ export function PaymentStep({ data, busy, onRetry, onChangeMethod }) {
         return <article key={`${item.due_date}-${index}`}>
           <div><strong>{charges.length > 1 ? `${index + 1}ª parcela` : 'Parcela única'}</strong><span>vence {date(item.due_date)}</span></div>
           <b>{money(item.amount_cents)}</b>
-          {item.status === 'pago' ? <span className={`badge ${tone}`}>{label}</span>
+          {item.status === 'pago' || item.status === 'vencido' ? <span className={`badge ${tone}`}>{label}</span>
             : item.payment_url ? <a className="btn btn--primary" href={item.payment_url} target="_blank" rel="noreferrer">Pagar</a>
               : <span className={`badge ${tone}`}>{label}</span>}
+          {item.status === 'pendente' && (item.bank_slip_url || item.boleto_line || item.pix_code) ? <div className="payment-shortcuts">
+            {item.bank_slip_url ? <a className="text-link" href={item.bank_slip_url} target="_blank" rel="noreferrer">Baixar boleto</a> : null}
+            {item.boleto_line ? <CopyButton value={item.boleto_line} label="Copiar linha digitável" /> : null}
+            {item.pix_code ? <CopyButton value={item.pix_code} label="Copiar Pix" /> : null}
+          </div> : null}
         </article>;
       })}
     </div>
