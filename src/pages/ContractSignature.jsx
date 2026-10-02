@@ -254,11 +254,13 @@ export default function ContractSignature() {
 
   useEffect(() => {
     const ready = contract.data?.required_data?.ready;
-    const generated = contract.data?.enrollments?.every((item) => item.contract_generated);
-    if (!ready || generated || contract.data?.status === 'assinada' || generatedFor.current === token) return;
+    // Uma vez por abertura: gera o que falta e refaz rascunhos de um modelo
+    // antigo; o servidor não mexe no que já está no modelo atual.
+    if (!ready || contract.data?.status === 'assinada' || generatedFor.current === token) return;
     generatedFor.current = token;
-    setBusy('generate');
-    generateContractPdf(token)
+    const generated = contract.data?.enrollments?.every((item) => item.contract_generated);
+    if (!generated) setBusy('generate');
+    generateContractPdf(token, { onlyIfOutdated: true })
       .then(() => contract.refresh())
       .catch((error) => setMessage(error.message || 'Não foi possível gerar o PDF individual.'))
       .finally(() => setBusy(''));

@@ -282,12 +282,16 @@ function bytesToBase64(buffer) {
   return btoa(binary);
 }
 
-export async function generateContractPdf(token) {
-  const response = await fetch('/contracts/contrato-matricula-cec-2025.pdf');
+// Modelo atual do contrato (o hash precisa bater com document_versions.is_current).
+export const CONTRACT_TEMPLATE_URL = '/contracts/contrato-cec-2027.pdf';
+
+export async function generateContractPdf(token, { onlyIfOutdated = false } = {}) {
+  const response = await fetch(CONTRACT_TEMPLATE_URL);
   if (!response.ok) throw new Error('Não foi possível carregar o modelo final do contrato.');
   return supabase.invokeFunction('generate-contract', {
     token,
-    template_base64: bytesToBase64(await response.arrayBuffer())
+    template_base64: bytesToBase64(await response.arrayBuffer()),
+    only_if_outdated: onlyIfOutdated
   });
 }
 
